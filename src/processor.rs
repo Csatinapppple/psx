@@ -9,4 +9,16 @@ struct CPU {
 
 }
 
+impl CPU {
 
+    fn cycle(&mut self){
+
+        let instruction = self.load32(pc);
+
+        self.pc = self.pc.wrapping_add(4);
+        
+        self.decode_and_execute(instruction);
+
+    }
+
+}
