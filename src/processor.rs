@@ -1,26 +1,35 @@
+mod consts;
+mod bus;
 
-const BIOS_START = 0xbfc00000;
-
+use consts;
+use bus::Bus;
 
 struct CPU {
-    bios:  
-    r: [u32; 32], // 32 registradores de propósito geral
-    pc: u32      // Program Counter (PC)
+    bus: Bus,
+    pc: usize      // Program Counter (PC)
 }
 
 impl CPU {
-    fn new() -> Self {
+    
+    pub fn run_next_instruction(&mut self) {
+        let instruction = self.load32(self.pc);
+        self.pc = self.pc.wrapping_add(4);
+        self.decode_and_execute(instruction);
+    }
+
+    fn new(bus: Bus) -> Self {
         Self {
-            r: [0; 32],
-            pc: BIOS_START, // Endereço inicial do BIOS do PS1
-            hi: 0,
-            lo: 0,
+            bus: Bus,
+            pc: consts::BIOS_START // Endereço inicial do BIOS do PS1
         }
     }
     
+    fn load32(&self, addr: usize) -> u32 {
+        self.bus.load32(addr)
+    }
     
-    fn decode(opcode: u32){
-           
+    fn decode_and_execute(&self, opcode: u32) {
+        panic!("Unhandled_instruction_{:08x}", opcode);
     }
 
 }
