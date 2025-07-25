@@ -24,4 +24,6 @@ Cargo.lock
 
 /target
 
+# Playstation 1 Bios folder
 
+/bios
