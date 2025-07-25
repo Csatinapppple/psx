@@ -3,10 +3,9 @@ const BIOS_START = 0xbfc00000;
 
 
 struct CPU {
+    bios:  
     r: [u32; 32], // 32 registradores de propósito geral
-    pc: u32,              // Program Counter (PC)
-    hi: u32,              // HI register (usado para multiplicações/divisões)
-    lo: u32,              // LO register (usado para multiplicações/divisões)
+    pc: u32      // Program Counter (PC)
 }
 
 impl CPU {
