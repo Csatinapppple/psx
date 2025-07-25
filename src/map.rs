@@ -1,7 +1,3 @@
-mod consts;
-
-use consts::Consts;
-
 mod map {
     struct Range(usize, usize);
 
@@ -9,8 +5,8 @@ mod map {
         pub fn contains(self, offset: usize) -> Option<usize> {
             let Range(start, length) = self;
 
-            if addr >= start && addr < start + length {
-                Some(addr - start)
+            if offset >= start && offset < start + length {
+                Some(offset - start)
             }
             None
         }   

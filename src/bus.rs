@@ -1,8 +1,3 @@
-mod bios;
-mod map;
-use bios::Bios;
-use map::Map;
-
 pub struct Bus {
     bios: Bios
 }

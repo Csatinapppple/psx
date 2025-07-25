@@ -1,10 +1,4 @@
-mod consts;
-mod bus;
-
-use consts;
-use bus::Bus;
-
-struct CPU {
+pub struct CPU {
     bus: Bus,
     pc: usize      // Program Counter (PC)
 }
@@ -20,7 +14,7 @@ impl CPU {
     fn new(bus: Bus) -> Self {
         Self {
             bus: Bus,
-            pc: consts::BIOS_START // Endereço inicial do BIOS do PS1
+            pc: Consts::BIOS_START // Endereço inicial do BIOS do PS1
         }
     }
     

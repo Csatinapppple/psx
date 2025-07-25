@@ -1,6 +1,5 @@
-mod consts;
 
-use consts::Consts;
+use std::fs::File;
 
 pub struct Bios{
     data: [consts::BIOS_SIZE, u8]

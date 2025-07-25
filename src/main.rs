@@ -1,10 +1,9 @@
-mod processor;
-mod bus;
 mod bios;
-
-use processor::Processor;
-use bus::Bus;
-use bios::Bios;
+mod bus;
+mod consts;
+mod map;
+mod opcode;
+mod processor;
 
 fn main() {
     let bios = Bios::new("bios/SCPH1001.BIN");
