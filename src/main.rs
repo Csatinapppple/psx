@@ -1,9 +1,12 @@
 mod bios;
 mod bus;
 mod consts;
+mod cpu;
 mod map;
-mod opcode;
-mod processor;
+
+use crate::bios::Bios;
+use crate::bus::Bus;
+use crate::cpu::CPU;
 
 fn main() {
     let bios = Bios::new("bios/SCPH1001.BIN");
@@ -13,7 +16,4 @@ fn main() {
     let mut cpu = CPU::new(bus);
 
     cpu.run_next_instruction();
-
-       
 }
-

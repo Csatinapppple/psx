@@ -1,14 +1,15 @@
-
+use crate::consts::BIOS_SIZE;
 use std::fs::File;
+use std::io::Read;
 
-pub struct Bios{
-    data: [consts::BIOS_SIZE, u8]
+pub struct Bios {
+    data: [u8; BIOS_SIZE],
 }
 
 impl Bios {
     pub fn new(filename: &str) -> Self {
         let mut f = File::open(filename).expect("file not found");
-        let mut buffer = [consts::BIOS_SIZE, u8];
+        let mut buffer: [u8; BIOS_SIZE] = [0; BIOS_SIZE];
 
         f.read(&mut buffer).expect("file couldn't be read");
 
@@ -16,7 +17,10 @@ impl Bios {
     }
 
     pub fn load32(&self, addr: usize) -> u32 {
-        u32::from_le_bytes(self.data[addr..addr+4])
-    }
+        let bytes: [u8; 4] = self.data[addr..addr + 4]
+            .try_into()
+            .expect("Failed to convert slice to array in Bios.rs");
 
+        u32::from_le_bytes(bytes)
+    }
 }
