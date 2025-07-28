@@ -28,16 +28,17 @@ impl CPU {
         self.bus.load32(addr)
     }
 
-    pub fn decode_and_execute(&self, instruction: Instruction) {
+    pub fn decode_and_execute(&mut self, instruction: Instruction) {
         match instruction.primary() {
             0b001111 => self.op_lui(instruction),
-            _ => panic!("Unhandled_instruction_{:08x}", instruction.get()),
+            0b001101 => self.op_ori(instruction),
+            _ => panic!("Unhandled_instruction_{:08x}", instruction.0),
         }
     }
 
     fn op_lui(&mut self, instruction: Instruction) {
         let i = instruction.imm();
-        let t = instruction.t();
+        let t = instruction.rt() as usize;
 
         let v = i << 16;
 
@@ -46,8 +47,11 @@ impl CPU {
 
     fn op_ori(&mut self, instruction: Instruction) {
         let i = instruction.imm();
-        let t = instruction.t();
-        let s = instruction.s();
+        let t = instruction.rt() as usize;
+        let s = instruction.rs() as usize;
+
+        let v = self.r[s];
+        self.set_r(t, v);
     }
 
     fn set_r(&mut self, index: usize, val: u32) {
