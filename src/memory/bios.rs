@@ -1,15 +1,15 @@
-use crate::consts::BIOS_SIZE;
+use crate::consts;
 use std::fs::File;
 use std::io::Read;
 
 pub struct Bios {
-    data: [u8; BIOS_SIZE],
+    data: [u8; consts::BIOS_SIZE],
 }
 
 impl Bios {
     pub fn new(filename: &str) -> Self {
         let mut f = File::open(filename).expect("file not found");
-        let mut buffer: [u8; BIOS_SIZE] = [0; BIOS_SIZE];
+        let mut buffer: [u8; consts::BIOS_SIZE] = [0; consts::BIOS_SIZE];
 
         f.read(&mut buffer).expect("file couldn't be read");
 

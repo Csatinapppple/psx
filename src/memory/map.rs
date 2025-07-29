@@ -1,21 +1,18 @@
-use crate::consts::{BIOS_SIZE, BIOS_START};
+use crate::consts;
 
-pub mod map {
+pub struct Range(usize, usize);
 
-    use crate::memory::map::{BIOS_SIZE, BIOS_START};
+impl Range {
+    pub fn contains(self, offset: usize) -> Option<usize> {
+        let Range(start, length) = self;
 
-    pub struct Range(usize, usize);
-
-    impl Range {
-        pub fn contains(self, offset: usize) -> Option<usize> {
-            let Range(start, length) = self;
-
-            if offset >= start && offset < start + length {
-                return Some(offset - start);
-            } else {
-                return None;
-            }
+        if offset >= start && offset < start + length {
+            return Some(offset - start);
+        } else {
+            return None;
         }
     }
-    pub const BIOS: Range = Range(BIOS_START, BIOS_SIZE);
 }
+
+pub const BIOS: Range = Range(consts::BIOS_START, consts::BIOS_SIZE);
+pub const MEM_CONTROL: Range = Range(consts::HARDWARE_REGISTER_START, 36);

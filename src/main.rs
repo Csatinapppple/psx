@@ -11,6 +11,8 @@ fn main() {
     let bus = Bus::new(bios);
 
     let mut cpu = CPU::new(bus);
-
-    cpu.run_next_instruction();
+    
+    loop {
+        cpu.run_next_instruction();
+    }
 }
