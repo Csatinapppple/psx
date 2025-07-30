@@ -1,2 +1,1 @@
-#[cfg(test)]
-mod instruction_test;
+mod map;
