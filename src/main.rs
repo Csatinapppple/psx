@@ -6,6 +6,8 @@ use crate::libs::bus::Bus;
 use crate::libs::cpu::CPU;
 
 fn main() {
+    println!("{:032b}", 0x00000825);
+
     let bios = Bios::new("bios/SCPH1001.BIN");
 
     let bus = Bus::new(bios);

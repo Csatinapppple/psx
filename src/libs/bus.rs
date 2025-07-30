@@ -43,6 +43,11 @@ impl Bus {
                 _ => println!("Unhandled_write_to_MEM_CONTROL 0x{:08x}", val),
             }
             return;
+        } else if let Some(offset) = memory::RAM_SIZE.contains(addr) {
+            return;
+        } else if let Some(offset) = memory::CACHE_CONTROL.contains(addr) {
+            println!("cache_control_store");
+            return;
         }
 
         panic!("unhandled_store32_into_address{:08x}", addr);

@@ -17,6 +17,8 @@ pub mod memory {
 
     pub const BIOS: Range = Range(consts::BIOS_START, consts::BIOS_SIZE);
     pub const MEM_CONTROL: Range = Range(consts::HARDWARE_REGISTER_START, 36);
+    pub const RAM_SIZE: Range = Range(consts::RAM_SIZE_START, 4);
+    pub const CACHE_CONTROL: Range = Range(consts::CACHE_CONTROL_START, 4);
 }
 
 pub mod opcode {
@@ -44,5 +46,6 @@ pub mod opcode {
     pub const RT: Range = Range(20, 16);
     pub const IMM: Range = Range(15, 0);
     pub const IMM5: Range = Range(10, 6);
+    pub const IMM_JMP: Range = Range(25, 0);
     pub const RS: Range = Range(25, 21);
 }

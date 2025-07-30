@@ -6,12 +6,17 @@ pub struct CPU {
     bus: Bus,
     pc: usize, // Program Counter (PC)
     r: [u32; 32],
+    next_opcode: u32,
 }
 
 impl CPU {
     pub fn run_next_opcode(&mut self) {
-        let opcode = self.load32(self.pc);
+        let opcode = self.next_opcode;
+
+        self.next_opcode = self.load32(self.pc);
+
         self.pc = self.pc.wrapping_add(4);
+
         self.decode_and_execute(opcode);
     }
 
@@ -21,6 +26,7 @@ impl CPU {
             bus: bus,
             pc: consts::BIOS_START, // Endereço inicial do BIOS do PS1
             r: registers,
+            next_opcode: 0,
         }
     }
 
@@ -44,18 +50,25 @@ impl CPU {
             imm_tmp as u32
         };
         let imm5 = || opcode::IMM5.get(opcode);
+        let imm_jmp = || opcode::IMM_JMP.get(opcode);
 
         match primary() {
             0b000000 => match secondary() {
-                0b000000 => self.op_sll(imm5(), rt(), rd()),
+                0b000000 => self.op_sll(imm5(), rs(), rd()),
+                0b100101 => self.op_or(rt(), rs(), rd()),
                 _ => panic!("unhandled_secondary_instruction_of_{:08x}", opcode),
             },
-            0b001000 => self.op_addiu(imm_se(), rt(), rs()),
+            0b000010 => self.op_j(imm_jmp()),
+            0b001001 => self.op_addiu(imm_se(), rt(), rs()),
             0b001111 => self.op_lui(imm(), rt()),
             0b001101 => self.op_ori(imm(), rt(), rs()),
             0b101011 => self.op_sw(imm_se(), rt(), rs()),
             _ => panic!("Unhandled_opcode::{:08x}", opcode),
         }
+    }
+
+    fn op_j(&mut self, imm_jmp: u32) {
+        self.pc = (self.pc & 0xf0000000) | (imm_jmp << 2) as usize;
     }
 
     fn op_addiu(&mut self, imm_se: u32, rt: usize, rs: usize) {
@@ -73,6 +86,11 @@ impl CPU {
         self.set_r(rt, v);
     }
 
+    fn op_or(&mut self, rt: usize, rs: usize, rd: usize) {
+        let v = self.r[rs] | self.r[rt];
+        self.set_r(rd, v);
+    }
+
     fn op_ori(&mut self, imm: u32, rt: usize, rs: usize) {
         let v = self.r[rs] | imm;
         self.set_r(rt, v);
@@ -87,8 +105,7 @@ impl CPU {
     }
 
     fn set_r(&mut self, index: usize, val: u32) {
-        if index > 0 {
-            self.r[index] = val;
-        }
+        self.r[index] = val;
+        self.r[0] = 0;
     }
 }
