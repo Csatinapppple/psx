@@ -39,7 +39,10 @@ pub mod opcode {
     }
 
     pub const PRIMARY: Range = Range(31, 26);
+    pub const SECONDARY: Range = Range(5, 0);
+    pub const RD: Range = Range(15, 11);
     pub const RT: Range = Range(20, 16);
     pub const IMM: Range = Range(15, 0);
+    pub const IMM5: Range = Range(10, 6);
     pub const RS: Range = Range(25, 21);
 }
