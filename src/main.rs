@@ -1,9 +1,9 @@
 mod consts;
-mod memory;
+mod libs;
 
-use crate::memory::bios::Bios;
-use crate::memory::bus::Bus;
-use crate::memory::cpu::CPU;
+use crate::libs::bios::Bios;
+use crate::libs::bus::Bus;
+use crate::libs::cpu::CPU;
 
 fn main() {
     let bios = Bios::new("bios/SCPH1001.BIN");
