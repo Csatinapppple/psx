@@ -48,7 +48,6 @@ impl CPU {
 
     fn op_lui(&mut self, imm: u32, rt: usize) {
         let v = imm << 16;
-
         self.set_r(rt, v);
     }
 
