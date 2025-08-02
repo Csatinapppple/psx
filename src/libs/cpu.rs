@@ -7,6 +7,7 @@ pub struct CPU {
     pc: usize, // Program Counter (PC)
     r: [u32; 32],
     next_opcode: u32,
+    sr: u32, // Status Register
 }
 
 impl CPU {
@@ -27,6 +28,7 @@ impl CPU {
             pc: consts::BIOS_START, // Endereço inicial do BIOS do PS1
             r: registers,
             next_opcode: 0,
+            sr: 0,
         }
     }
 
@@ -62,8 +64,28 @@ impl CPU {
             0b001001 => self.op_addiu(imm_se(), rt(), rs()),
             0b001111 => self.op_lui(imm(), rt()),
             0b001101 => self.op_ori(imm(), rt(), rs()),
+            0b010000 => self.op_cop0(opcode),
             0b101011 => self.op_sw(imm_se(), rt(), rs()),
             _ => panic!("Unhandled_opcode::{:08x}", opcode),
+        }
+    }
+
+    fn op_cop0(&mut self, opcode: u32) {
+        let cop_rs = || opcode::RS.get(opcode) as usize;
+        let cop_rt = || opcode::RT.get(opcode) as usize;
+        let cop_rd = || opcode::RD.get(opcode) as usize;
+        match cop_rs() {
+            0b00100 => self.op_mtc0(cop_rt(), cop_rd()),
+            _ => panic!("Unhandled cop0 instruction: {:08x}", opcode),
+        }
+    }
+
+    fn op_mtc0(&mut self, rt: usize, rd: usize) {
+        let v = self.r[rt];
+
+        match rd {
+            12 => self.sr = v,
+            n => panic!("Unhandled cop0 register: {:08x}", n),
         }
     }
 
@@ -98,6 +120,11 @@ impl CPU {
 
     // Store Word
     fn op_sw(&mut self, imm_se: u32, rt: usize, rs: usize) {
+        if self.sr & 0x10000 != 0 {
+            println!("ignoring store while cache is isolated");
+            return;
+        }
+
         let addr = self.r[rs].wrapping_add(imm_se) as usize;
         let v = self.r[rt];
 

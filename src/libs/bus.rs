@@ -43,9 +43,9 @@ impl Bus {
                 _ => println!("Unhandled_write_to_MEM_CONTROL 0x{:08x}", val),
             }
             return;
-        } else if let Some(offset) = memory::RAM_SIZE.contains(addr) {
+        } else if memory::RAM_SIZE.contains(addr).is_some() {
             return;
-        } else if let Some(offset) = memory::CACHE_CONTROL.contains(addr) {
+        } else if memory::CACHE_CONTROL.contains(addr).is_some() {
             println!("cache_control_store");
             return;
         }
