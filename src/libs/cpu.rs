@@ -53,7 +53,6 @@ impl CPU {
         };
         let imm5 = || opcode::IMM5.get(opcode);
         let imm_jmp = || opcode::IMM_JMP.get(opcode);
-        let 
 
         match primary() {
             0b000000 => match secondary() {
@@ -71,17 +70,17 @@ impl CPU {
         }
     }
 
-    fn op_cop0(&mut self, opcode: u32){
+    fn op_cop0(&mut self, opcode: u32) {
         let cop_rs = || opcode::RS.get(opcode) as usize;
         let cop_rt = || opcode::RT.get(opcode) as usize;
         let cop_rd = || opcode::RD.get(opcode) as usize;
-        match cop_rs {
-            0b00100 => self.op_mtc0(cop_rt, cop_rd),
+        match cop_rs() {
+            0b00100 => self.op_mtc0(cop_rt(), cop_rd()),
             _ => panic!("Unhandled cop0 instruction: {:08x}", opcode),
         }
     }
 
-    fn op_mtc0(&mut self, rt: usize, rd: usize){
+    fn op_mtc0(&mut self, rt: usize, rd: usize) {
         let v = self.r[rt];
 
         match rd {
@@ -89,7 +88,6 @@ impl CPU {
             n => panic!("Unhandled cop0 register: {:08x}", n),
         }
     }
-
 
     fn op_j(&mut self, imm_jmp: u32) {
         self.pc = (self.pc & 0xf0000000) | (imm_jmp << 2) as usize;
@@ -122,6 +120,11 @@ impl CPU {
 
     // Store Word
     fn op_sw(&mut self, imm_se: u32, rt: usize, rs: usize) {
+        if self.sr & 0x10000 != 0 {
+            println!("ignoring store while cache is isolated");
+            return;
+        }
+
         let addr = self.r[rs].wrapping_add(imm_se) as usize;
         let v = self.r[rt];
 
