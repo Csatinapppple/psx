@@ -55,24 +55,45 @@ impl CPU {
         let imm_jmp = || opcode::IMM_JMP.get(opcode);
 
         match primary() {
-            0b000000 => match secondary() {
-                0b000000 => self.op_sll(imm5(), rs(), rd()),
-                0b100101 => self.op_or(rt(), rs(), rd()),
+            0x00 => match secondary() {
+                0x00 => self.op_sll(imm5(), rs(), rd()),
+                0x25 => self.op_or(rt(), rs(), rd()),
                 _ => panic!("unhandled_secondary_instruction_of_{:08x}", opcode),
             },
-            0b000010 => self.op_j(imm_jmp()),
-            0b000101 => self.op_bne(imm_se(), rt(), rs()),
-            0b001001 => self.op_addiu(imm_se(), rt(), rs()),
-            0b001111 => self.op_lui(imm(), rt()),
-            0b001101 => self.op_ori(imm(), rt(), rs()),
-            0b010000 => self.op_cop0(opcode),
-            0b101011 => self.op_sw(imm_se(), rt(), rs()),
+            0x02 => self.op_j(imm_jmp()),
+            0x05 => self.op_bne(imm_se(), rt(), rs()),
+            0x08 => self.op_addi(imm_se(), rt(), rs()),
+            0x09 => self.op_addiu(imm_se(), rt(), rs()),
+            0x0d => self.op_ori(imm(), rt(), rs()),
+            0x0f => self.op_lui(imm(), rt()),
+            0x10 => self.op_cop0(opcode),
+            0x23 => self.op_lw(imm_se(), rt(), rs()),
+            0x2b => self.op_sw(imm_se(), rt(), rs()),
             _ => panic!("Unhandled_opcode::{:08x}", opcode),
         }
     }
 
+    fn op_lw(&mut self, imm_se: u32, rt: usize, rs: usize) {
+        if self.sr & 0x10000 != 0 {
+            println!("Ignoring load while cache is isolated");
+            return;
+        }
+
+        let addr = self.r[rs].wrapping_add(imm_se);
+        let v = self.load32(addr as usize);
+        self.set_r(rt, v);
+    }
+
     fn op_addi(&mut self, imm_se: u32, rt: usize, rs: usize) {
         let imm_se = imm_se as i32;
+
+        let s = self.r[rs] as i32;
+        let v = match s.checked_add(imm_se) {
+            Some(v) => v as u32,
+            None => panic!("ADDI overflow"),
+        };
+
+        self.set_r(rt, v);
     }
 
     fn branch(&mut self, offset: u32) {
