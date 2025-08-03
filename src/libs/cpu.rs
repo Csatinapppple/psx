@@ -5,7 +5,9 @@ use crate::libs::map::opcode;
 pub struct CPU {
     bus: Bus,
     pc: u32, // Program Counter (PC)
+    load: (usize, u32),
     r: [u32; 32],
+    out_r: [u32; 32],
     next_opcode: u32,
     sr: u32, // Status Register
 }
@@ -23,10 +25,13 @@ impl CPU {
 
     pub fn new(bus: Bus) -> Self {
         let registers: [u32; 32] = [0; 32];
+        let out_registers: [u32; 32] = [0; 32];
         Self {
             bus: bus,
             pc: consts::BIOS_START as u32, // Endereço inicial do BIOS do PS1
+            load: (0, 0),
             r: registers,
+            out_r: out_registers,
             next_opcode: 0,
             sr: 0,
         }
