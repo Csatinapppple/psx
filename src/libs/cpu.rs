@@ -4,7 +4,7 @@ use crate::libs::map::opcode;
 
 pub struct CPU {
     bus: Bus,
-    pc: usize, // Program Counter (PC)
+    pc: u32, // Program Counter (PC)
     r: [u32; 32],
     next_opcode: u32,
     sr: u32, // Status Register
@@ -14,7 +14,7 @@ impl CPU {
     pub fn run_next_opcode(&mut self) {
         let opcode = self.next_opcode;
 
-        self.next_opcode = self.load32(self.pc);
+        self.next_opcode = self.load32(self.pc as usize);
 
         self.pc = self.pc.wrapping_add(4);
 
@@ -25,7 +25,7 @@ impl CPU {
         let registers: [u32; 32] = [0; 32];
         Self {
             bus: bus,
-            pc: consts::BIOS_START, // Endereço inicial do BIOS do PS1
+            pc: consts::BIOS_START as u32, // Endereço inicial do BIOS do PS1
             r: registers,
             next_opcode: 0,
             sr: 0,
@@ -61,12 +61,30 @@ impl CPU {
                 _ => panic!("unhandled_secondary_instruction_of_{:08x}", opcode),
             },
             0b000010 => self.op_j(imm_jmp()),
+            0b000101 => self.op_bne(imm_se(), rt(), rs()),
             0b001001 => self.op_addiu(imm_se(), rt(), rs()),
             0b001111 => self.op_lui(imm(), rt()),
             0b001101 => self.op_ori(imm(), rt(), rs()),
             0b010000 => self.op_cop0(opcode),
             0b101011 => self.op_sw(imm_se(), rt(), rs()),
             _ => panic!("Unhandled_opcode::{:08x}", opcode),
+        }
+    }
+
+    fn op_addi(&mut self, imm_se: u32, rt: usize, rs: usize) {
+        let imm_se = imm_se as i32;
+    }
+
+    fn branch(&mut self, offset: u32) {
+        println!("offset before {:x}", offset);
+        let offset = offset << 2;
+        println!("offset after  {:x}", offset);
+        self.pc = self.pc.wrapping_add(offset + 4);
+    }
+
+    fn op_bne(&mut self, imm_se: u32, rt: usize, rs: usize) {
+        if self.r[rs] != self.r[rt] {
+            self.branch(imm_se);
         }
     }
 
@@ -90,7 +108,7 @@ impl CPU {
     }
 
     fn op_j(&mut self, imm_jmp: u32) {
-        self.pc = (self.pc & 0xf0000000) | (imm_jmp << 2) as usize;
+        self.pc = (self.pc & 0xf0000000) | (imm_jmp << 2);
     }
 
     fn op_addiu(&mut self, imm_se: u32, rt: usize, rs: usize) {
