@@ -16,22 +16,30 @@ impl CPU {
     pub fn run_next_opcode(&mut self) {
         let opcode = self.next_opcode;
 
+        let (reg, val) = self.load;
+        self.set_r(reg, val);
+
+        self.load = (0, 0);
+
         self.next_opcode = self.load32(self.pc as usize);
 
         self.pc = self.pc.wrapping_add(4);
 
         self.decode_and_execute(opcode);
+
+        self.r = self.out_r;
+
+        println!("curent opcode: {:08x}", opcode);
     }
 
     pub fn new(bus: Bus) -> Self {
         let registers: [u32; 32] = [0; 32];
-        let out_registers: [u32; 32] = [0; 32];
         Self {
             bus: bus,
             pc: consts::BIOS_START as u32, // Endereço inicial do BIOS do PS1
             load: (0, 0),
             r: registers,
-            out_r: out_registers,
+            out_r: registers,
             next_opcode: 0,
             sr: 0,
         }
@@ -62,7 +70,9 @@ impl CPU {
         match primary() {
             0x00 => match secondary() {
                 0x00 => self.op_sll(imm5(), rs(), rd()),
+                0x21 => self.op_addu(rt(), rs(), rd()),
                 0x25 => self.op_or(rt(), rs(), rd()),
+                0x2b => self.op_sltu(rt(), rs(), rd()),
                 _ => panic!("unhandled_secondary_instruction_of_{:08x}", opcode),
             },
             0x02 => self.op_j(imm_jmp()),
@@ -78,6 +88,16 @@ impl CPU {
         }
     }
 
+    fn op_addu(&mut self, rt: usize, rs: usize, rd: usize) {
+        let v = self.r[rs].wrapping_add(self.r[rt]);
+        self.set_r(rd, v);
+    }
+
+    fn op_sltu(&mut self, rt: usize, rs: usize, rd: usize){
+        let v = self.r[rs] < self.r[rt];
+        self.set_r(rd, v as u32);
+    }
+
     fn op_lw(&mut self, imm_se: u32, rt: usize, rs: usize) {
         if self.sr & 0x10000 != 0 {
             println!("Ignoring load while cache is isolated");
@@ -86,7 +106,7 @@ impl CPU {
 
         let addr = self.r[rs].wrapping_add(imm_se);
         let v = self.load32(addr as usize);
-        self.set_r(rt, v);
+        self.load = (rt, v);
     }
 
     fn op_addi(&mut self, imm_se: u32, rt: usize, rs: usize) {
@@ -102,9 +122,7 @@ impl CPU {
     }
 
     fn branch(&mut self, offset: u32) {
-        println!("offset before {:x}", offset);
         let offset = offset << 2;
-        println!("offset after  {:x}", offset);
         self.pc = self.pc.wrapping_add(offset + 4);
     }
 
@@ -128,7 +146,17 @@ impl CPU {
         let v = self.r[rt];
 
         match rd {
+            3 | 5 | 6 | 7 | 9 | 11 => {
+                if v != 0 {
+                    panic!("Unhandled write to cop0 {:}", rd);
+                }
+            },
             12 => self.sr = v,
+            13 => {
+                if v != 0 {
+                    panic!("Unhandled write to cop0 {:}", rd);
+                }
+            },
             n => panic!("Unhandled cop0 register: {:08x}", n),
         }
     }
@@ -176,7 +204,7 @@ impl CPU {
     }
 
     fn set_r(&mut self, index: usize, val: u32) {
-        self.r[index] = val;
-        self.r[0] = 0;
+        self.out_r[index] = val;
+        self.out_r[0] = 0;
     }
 }

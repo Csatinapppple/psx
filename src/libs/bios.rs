@@ -3,13 +3,13 @@ use std::fs::File;
 use std::io::Read;
 
 pub struct Bios {
-    data: [u8; consts::BIOS_SIZE],
+    data: Vec<u8>,
 }
 
 impl Bios {
     pub fn new(filename: &str) -> Self {
         let mut f = File::open(filename).expect("file not found");
-        let mut buffer: [u8; consts::BIOS_SIZE] = [0; consts::BIOS_SIZE];
+        let mut buffer = vec![0; consts::BIOS_SIZE];
 
         f.read(&mut buffer).expect("file couldn't be read");
 

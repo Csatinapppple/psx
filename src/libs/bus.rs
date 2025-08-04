@@ -1,8 +1,10 @@
 use crate::libs::bios::Bios;
 use crate::libs::map::memory;
+use crate::libs::ram::Ram;
 
 pub struct Bus {
     bios: Bios,
+    ram: Ram,
 }
 
 impl Bus {
@@ -12,23 +14,32 @@ impl Bus {
         }
     }
 
-    pub fn new(bios: Bios) -> Self {
-        Self { bios: bios }
+    pub fn new(bios: Bios, ram: Ram) -> Self {
+        Self {
+            bios: bios,
+            ram: ram,
+        }
     }
 
     pub fn load32(&self, addr: usize) -> u32 {
         Self::check_alignment(addr);
 
-        if let Some(offset) = memory::BIOS.contains(addr) {
+        if let Some(offset) = memory::RAM.contains(addr) {
+            return self.ram.load32(offset);
+        } else if let Some(offset) = memory::BIOS.contains(addr) {
             return self.bios.load32(offset);
         }
+
         panic!("unhandled_load32_at_address_{:08x}", addr);
     }
 
     pub fn store32(&mut self, addr: usize, val: u32) {
         Self::check_alignment(addr);
 
-        if let Some(offset) = memory::MEM_CONTROL.contains(addr) {
+        if let Some(offset) = memory::RAM.contains(addr) {
+            self.ram.store32(offset, val);
+            return;
+        } else if let Some(offset) = memory::MEM_CONTROL.contains(addr) {
             match offset {
                 0 => {
                     if val != 0x1f000000 {

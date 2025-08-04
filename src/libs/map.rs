@@ -18,6 +18,7 @@ pub mod memory {
     pub const BIOS: Range = Range(consts::BIOS_START, consts::BIOS_SIZE);
     pub const MEM_CONTROL: Range = Range(consts::HARDWARE_REGISTER_START, 36);
     pub const RAM_SIZE: Range = Range(consts::RAM_SIZE_START, 4);
+    pub const RAM: Range = Range(consts::RAM_START, consts::RAM_SIZE);
     pub const CACHE_CONTROL: Range = Range(consts::CACHE_CONTROL_START, 4);
 }
 
