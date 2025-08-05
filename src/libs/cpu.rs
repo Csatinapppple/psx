@@ -69,7 +69,7 @@ impl CPU {
 
         match primary() {
             0x00 => match secondary() {
-                0x00 => self.op_sll(imm5(), rs(), rd()),
+                0x00 => self.op_sll(imm5(), rt(), rd()),
                 0x21 => self.op_addu(rt(), rs(), rd()),
                 0x25 => self.op_or(rt(), rs(), rd()),
                 0x2b => self.op_sltu(rt(), rs(), rd()),
@@ -93,7 +93,7 @@ impl CPU {
         self.set_r(rd, v);
     }
 
-    fn op_sltu(&mut self, rt: usize, rs: usize, rd: usize){
+    fn op_sltu(&mut self, rt: usize, rs: usize, rd: usize) {
         let v = self.r[rs] < self.r[rt];
         self.set_r(rd, v as u32);
     }
@@ -123,7 +123,7 @@ impl CPU {
 
     fn branch(&mut self, offset: u32) {
         let offset = offset << 2;
-        self.pc = self.pc.wrapping_add(offset + 4);
+        self.pc = self.pc.wrapping_add(offset).wrapping_sub(4);
     }
 
     fn op_bne(&mut self, imm_se: u32, rt: usize, rs: usize) {
@@ -150,13 +150,13 @@ impl CPU {
                 if v != 0 {
                     panic!("Unhandled write to cop0 {:}", rd);
                 }
-            },
+            }
             12 => self.sr = v,
             13 => {
                 if v != 0 {
                     panic!("Unhandled write to cop0 {:}", rd);
                 }
-            },
+            }
             n => panic!("Unhandled cop0 register: {:08x}", n),
         }
     }

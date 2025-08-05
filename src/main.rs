@@ -8,7 +8,7 @@ use crate::libs::ram::Ram;
 
 fn main() {
     println!("{:032b}", 0x1420fffc);
-    
+
     let bios = Bios::new("bios/SCPH1001.BIN");
     let ram = Ram::new();
 

@@ -7,7 +7,7 @@ pub mod memory {
         pub fn contains(self, offset: usize) -> Option<usize> {
             let Range(start, length) = self;
 
-            if offset >= start && offset < start + length {
+            if offset >= start && offset < (start + length) {
                 return Some(offset - start);
             } else {
                 return None;

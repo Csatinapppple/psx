@@ -55,9 +55,10 @@ impl Bus {
             }
             return;
         } else if memory::RAM_SIZE.contains(addr).is_some() {
+            println!("ram_size_store at addr {:08x}", addr);
             return;
         } else if memory::CACHE_CONTROL.contains(addr).is_some() {
-            println!("cache_control_store");
+            println!("cache_control_store at addr {:08x}", addr);
             return;
         }
 
