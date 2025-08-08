@@ -33,17 +33,18 @@ impl Bus {
         panic!("unhandled_load32_at_address_{:08x}", addr);
     }
 
-    pub fn store16(&mut self, addr: usize, val: u16){
-
+    pub fn store16(&mut self, addr: usize, val: u16) {
         Self::check_alignment(addr, 2);
 
-        if let Some(offset) = memory::SPU.contains(addr){
+        if let Some(offset) = memory::SPU.contains(addr) {
             println!("Unhandled write to SPU register {:x}", offset);
             return;
         }
 
-        panic!("unhandled store16 at addresss : Ox{:08x}. with val : {:016b} ", addr, val);
-
+        panic!(
+            "unhandled store16 at addresss : Ox{:08x}. with val : {:016b} ",
+            addr, val
+        );
     }
 
     pub fn store32(&mut self, addr: usize, val: u32) {

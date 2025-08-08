@@ -94,10 +94,9 @@ impl CPU {
             _ => panic!("Unhandled_opcode::{:08x}", opcode),
         }
     }
-    
 
-    fn op_sh(&mut self,imm_se: u32, rt: usize, rs: usize ){
-        if self.sr & 0x10000 != 0{
+    fn op_sh(&mut self, imm_se: u32, rt: usize, rs: usize) {
+        if self.sr & 0x10000 != 0 {
             println!("Ignoring store while cache is isolated");
             return;
         }
@@ -179,7 +178,7 @@ impl CPU {
         }
     }
 
-    fn op_jal(&mut self, imm_jmp: u32){
+    fn op_jal(&mut self, imm_jmp: u32) {
         let ra = self.pc;
         self.set_r(31, ra);
         self.op_j(imm_jmp);
