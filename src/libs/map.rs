@@ -39,6 +39,7 @@ pub mod memory {
     pub const RAM: Range = Range(consts::RAM_START, consts::RAM_SIZE);
     pub const CACHE_CONTROL: Range = Range(consts::CACHE_CONTROL_START, 4);
     pub const SPU: Range = Range(consts::SPU_START, 640);
+    pub const EXPANSION_2: Range = Range(consts::EXPANSION_2_START, 66);
 }
 
 pub mod opcode {

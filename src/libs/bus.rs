@@ -47,6 +47,18 @@ impl Bus {
         );
     }
 
+    pub fn store8(&mut self, addr: usize, val: u8) {
+        if let Some(offset) = memory::EXPANSION_2.contains(addr) {
+            println!(
+                "Unhandled write of {:08b} to expansion 2 register {:x}",
+                val, offset
+            );
+            return;
+        }
+
+        panic!("unhandled store8 into address {:08x}", addr);
+    }
+
     pub fn store32(&mut self, addr: usize, val: u32) {
         Self::check_alignment(addr, 4);
 

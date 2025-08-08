@@ -49,6 +49,10 @@ impl CPU {
         self.bus.load32(addr)
     }
 
+    fn store8(&mut self, addr: usize, val: u8) {
+        self.bus.store8(addr, val);
+    }
+
     fn store16(&mut self, addr: usize, val: u16) {
         self.bus.store16(addr, val);
     }
@@ -74,6 +78,7 @@ impl CPU {
         match primary() {
             0x00 => match secondary() {
                 0x00 => self.op_sll(imm5(), rt(), rd()),
+                0x08 => self.op_jr(rs()),
                 0x21 => self.op_addu(rt(), rs(), rd()),
                 0x25 => self.op_or(rt(), rs(), rd()),
                 0x2b => self.op_sltu(rt(), rs(), rd()),
@@ -89,10 +94,15 @@ impl CPU {
             0x0f => self.op_lui(imm(), rt()),
             0x10 => self.op_cop0(opcode),
             0x23 => self.op_lw(imm_se(), rt(), rs()),
+            0x28 => self.op_sb(imm_se(), rt(), rs()),
             0x29 => self.op_sh(imm_se(), rt(), rs()),
             0x2b => self.op_sw(imm_se(), rt(), rs()),
             _ => panic!("Unhandled_opcode::{:08x}", opcode),
         }
+    }
+
+    fn op_jr(&mut self, rs: usize) {
+        self.pc = self.r[rs];
     }
 
     fn op_sh(&mut self, imm_se: u32, rt: usize, rs: usize) {
@@ -102,7 +112,20 @@ impl CPU {
         }
         let v = (self.r[rt] & 0xffff) as u16;
         let i = self.r[rs].wrapping_add(imm_se) as usize;
+
         self.store16(i, v);
+    }
+
+    fn op_sb(&mut self, imm_se: u32, rt: usize, rs: usize) {
+        if self.sr & 0x10000 != 0 {
+            // Cache is isolated, ignore write
+            println!("Ignoring store while cache is isolated");
+            return;
+        }
+        let v = (self.r[rt] & 0xff) as u8;
+        let i = self.r[rs].wrapping_add(imm_se) as usize;
+
+        self.store8(i, v);
     }
 
     fn op_addu(&mut self, rt: usize, rs: usize, rd: usize) {
