@@ -49,6 +49,10 @@ impl CPU {
         self.bus.load32(addr)
     }
 
+    fn store16(&mut self, addr: usize, val: u16) {
+        self.bus.store16(addr, val);
+    }
+
     fn store32(&mut self, addr: usize, val: u32) {
         self.bus.store32(addr, val);
     }
@@ -76,16 +80,30 @@ impl CPU {
                 _ => panic!("unhandled_secondary_instruction_of_{:08x}", opcode),
             },
             0x02 => self.op_j(imm_jmp()),
+            0x03 => self.op_jal(imm_jmp()),
             0x05 => self.op_bne(imm_se(), rt(), rs()),
             0x08 => self.op_addi(imm_se(), rt(), rs()),
             0x09 => self.op_addiu(imm_se(), rt(), rs()),
+            0x0c => self.op_andi(imm(), rt(), rs()),
             0x0d => self.op_ori(imm(), rt(), rs()),
             0x0f => self.op_lui(imm(), rt()),
             0x10 => self.op_cop0(opcode),
             0x23 => self.op_lw(imm_se(), rt(), rs()),
+            0x29 => self.op_sh(imm_se(), rt(), rs()),
             0x2b => self.op_sw(imm_se(), rt(), rs()),
             _ => panic!("Unhandled_opcode::{:08x}", opcode),
         }
+    }
+    
+
+    fn op_sh(&mut self,imm_se: u32, rt: usize, rs: usize ){
+        if self.sr & 0x10000 != 0{
+            println!("Ignoring store while cache is isolated");
+            return;
+        }
+        let v = (self.r[rt] & 0xffff) as u16;
+        let i = self.r[rs].wrapping_add(imm_se) as usize;
+        self.store16(i, v);
     }
 
     fn op_addu(&mut self, rt: usize, rs: usize, rd: usize) {
@@ -161,6 +179,12 @@ impl CPU {
         }
     }
 
+    fn op_jal(&mut self, imm_jmp: u32){
+        let ra = self.pc;
+        self.set_r(31, ra);
+        self.op_j(imm_jmp);
+    }
+
     fn op_j(&mut self, imm_jmp: u32) {
         self.pc = (self.pc & 0xf0000000) | (imm_jmp << 2);
     }
@@ -183,6 +207,11 @@ impl CPU {
     fn op_or(&mut self, rt: usize, rs: usize, rd: usize) {
         let v = self.r[rs] | self.r[rt];
         self.set_r(rd, v);
+    }
+
+    fn op_andi(&mut self, imm: u32, rt: usize, rs: usize) {
+        let v = self.r[rs] & imm;
+        self.set_r(rt, v);
     }
 
     fn op_ori(&mut self, imm: u32, rt: usize, rs: usize) {

@@ -8,8 +8,8 @@ pub struct Bus {
 }
 
 impl Bus {
-    fn check_alignment(addr: usize) {
-        if addr % 4 != 0 {
+    fn check_alignment(addr: usize, alignment: usize) {
+        if addr % alignment != 0 {
             panic!("unhandled_unaligned_memory_access_at{:08x}", addr);
         }
     }
@@ -22,7 +22,7 @@ impl Bus {
     }
 
     pub fn load32(&self, addr: usize) -> u32 {
-        Self::check_alignment(addr);
+        Self::check_alignment(addr, 4);
 
         if let Some(offset) = memory::RAM.contains(addr) {
             return self.ram.load32(offset);
@@ -33,8 +33,21 @@ impl Bus {
         panic!("unhandled_load32_at_address_{:08x}", addr);
     }
 
+    pub fn store16(&mut self, addr: usize, val: u16){
+
+        Self::check_alignment(addr, 2);
+
+        if let Some(offset) = memory::SPU.contains(addr){
+            println!("Unhandled write to SPU register {:x}", offset);
+            return;
+        }
+
+        panic!("unhandled store16 at addresss : Ox{:08x}. with val : {:016b} ", addr, val);
+
+    }
+
     pub fn store32(&mut self, addr: usize, val: u32) {
-        Self::check_alignment(addr);
+        Self::check_alignment(addr, 4);
 
         if let Some(offset) = memory::RAM.contains(addr) {
             self.ram.store32(offset, val);
