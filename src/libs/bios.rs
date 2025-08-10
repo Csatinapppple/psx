@@ -23,4 +23,8 @@ impl Bios {
 
         u32::from_le_bytes(bytes)
     }
+
+    pub fn load8(&self, addr: usize) -> u8 {
+        u8::from_le(self.data[addr])
+    }
 }

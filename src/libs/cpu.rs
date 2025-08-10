@@ -49,6 +49,10 @@ impl CPU {
         self.bus.load32(addr)
     }
 
+    fn load8(&self, addr: usize) -> u8 {
+        self.bus.load8(addr)
+    }
+
     fn store8(&mut self, addr: usize, val: u8) {
         self.bus.store8(addr, val);
     }
@@ -93,12 +97,20 @@ impl CPU {
             0x0d => self.op_ori(imm(), rt(), rs()),
             0x0f => self.op_lui(imm(), rt()),
             0x10 => self.op_cop0(opcode),
+            0x20 => self.op_lb(imm_se(), rt(), rs()),
             0x23 => self.op_lw(imm_se(), rt(), rs()),
             0x28 => self.op_sb(imm_se(), rt(), rs()),
             0x29 => self.op_sh(imm_se(), rt(), rs()),
             0x2b => self.op_sw(imm_se(), rt(), rs()),
             _ => panic!("Unhandled_opcode::{:08x}", opcode),
         }
+    }
+
+    fn op_lb(&mut self, imm_se: u32, rt: usize, rs: usize) {
+        let i = self.r[rs].wrapping_add(imm_se) as usize;
+        let v = self.load8(i) as i8;
+
+        self.load = (rt, v as u32);
     }
 
     fn op_jr(&mut self, rs: usize) {

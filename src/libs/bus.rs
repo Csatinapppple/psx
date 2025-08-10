@@ -21,6 +21,14 @@ impl Bus {
         }
     }
 
+    pub fn load8(&self, addr: usize) -> u8 {
+        if let Some(offset) = memory::BIOS.contains(addr) {
+            return self.bios.load8(offset);
+        }
+
+        panic!("unhandled load8 at address {:08x}", addr);
+    }
+
     pub fn load32(&self, addr: usize) -> u32 {
         Self::check_alignment(addr, 4);
 
