@@ -21,24 +21,29 @@ impl Bus {
         }
     }
 
-    pub fn load8(&self, addr: usize) -> u8 {
-        if let Some(offset) = memory::BIOS.contains(addr) {
-            return self.bios.load8(offset);
+    pub fn load8(&self, addr: usize) -> Result<u8, String> {
+        if let Some(offset) = memory::RAM.contains(addr) {
+            return Ok(self.ram.load8(offset));
+        } else if let Some(offset) = memory::BIOS.contains(addr) {
+            return Ok(self.bios.load8(offset));
+        } else if let Some(offset) = memory::EXPANSION_1.contains(addr) {
+            println!("load8 at addr {:08x} EXPANSION_1", offset);
+            return Ok(0xff);
         }
 
-        panic!("unhandled load8 at address {:08x}", addr);
+        Err(format!("unhandled load8 at address {:08x}", addr))
     }
 
-    pub fn load32(&self, addr: usize) -> u32 {
+    pub fn load32(&self, addr: usize) -> Result<u32, String> {
         Self::check_alignment(addr, 4);
 
         if let Some(offset) = memory::RAM.contains(addr) {
-            return self.ram.load32(offset);
+            return Ok(self.ram.load32(offset));
         } else if let Some(offset) = memory::BIOS.contains(addr) {
-            return self.bios.load32(offset);
+            return Ok(self.bios.load32(offset));
         }
 
-        panic!("unhandled_load32_at_address_{:08x}", addr);
+        Err(format!("unhandled_load32_at_address_{:08x}", addr))
     }
 
     pub fn store16(&mut self, addr: usize, val: u16) {
@@ -56,7 +61,11 @@ impl Bus {
     }
 
     pub fn store8(&mut self, addr: usize, val: u8) {
-        if let Some(offset) = memory::EXPANSION_2.contains(addr) {
+        if let Some(offset) = memory::RAM.contains(addr) {
+            self.ram.store8(offset, val);
+            println!("Write of BYTE at RAM {:08x} with val: {:08b}", offset, val);
+            return;
+        } else if let Some(offset) = memory::EXPANSION_2.contains(addr) {
             println!(
                 "Unhandled write of {:08b} to expansion 2 register {:x}",
                 val, offset

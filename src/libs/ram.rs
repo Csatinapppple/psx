@@ -10,6 +10,14 @@ impl Ram {
         Self { data: data }
     }
 
+    pub fn load8(&self, addr: usize) -> u8 {
+            u8::from_le(self.data[addr])
+    }
+
+    pub fn store8(&mut self, addr: usize, val: u8) {
+        self.data[addr] = val.to_le();
+    }
+
     pub fn load32(&self, addr: usize) -> u32 {
         let bytes: [u8; 4] = self.data[addr..addr + 4]
             .try_into()

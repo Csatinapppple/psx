@@ -46,11 +46,17 @@ impl CPU {
     }
 
     fn load32(&self, addr: usize) -> u32 {
-        self.bus.load32(addr)
+        match self.bus.load32(addr) {
+            Ok(integer) => return integer,
+            Err(string) => panic!("{}", string),
+        }
     }
 
     fn load8(&self, addr: usize) -> u8 {
-        self.bus.load8(addr)
+        match self.bus.load8(addr) {
+            Ok(integer) => return integer,
+            Err(string) => panic!("{}", string),
+        }
     }
 
     fn store8(&mut self, addr: usize, val: u8) {
@@ -90,6 +96,7 @@ impl CPU {
             },
             0x02 => self.op_j(imm_jmp()),
             0x03 => self.op_jal(imm_jmp()),
+            0x04 => self.op_beq(imm_se(), rt(), rs()),
             0x05 => self.op_bne(imm_se(), rt(), rs()),
             0x08 => self.op_addi(imm_se(), rt(), rs()),
             0x09 => self.op_addiu(imm_se(), rt(), rs()),
@@ -103,6 +110,12 @@ impl CPU {
             0x29 => self.op_sh(imm_se(), rt(), rs()),
             0x2b => self.op_sw(imm_se(), rt(), rs()),
             _ => panic!("Unhandled_opcode::{:08x}", opcode),
+        }
+    }
+
+    fn op_beq(&mut self, imm_se: u32, rt: usize, rs: usize) {
+        if self.r[rs] == self.r[rt] {
+            self.branch(imm_se);
         }
     }
 
