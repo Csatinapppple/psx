@@ -89,7 +89,9 @@ impl CPU {
             0x00 => match secondary() {
                 0x00 => self.op_sll(imm5(), rt(), rd()),
                 0x08 => self.op_jr(rs()),
+                0x20 => self.op_add(rt(), rs(), rd()),
                 0x21 => self.op_addu(rt(), rs(), rd()),
+                0x24 => self.op_and(rt(), rs(), rd()),
                 0x25 => self.op_or(rt(), rs(), rd()),
                 0x2b => self.op_sltu(rt(), rs(), rd()),
                 _ => panic!("unhandled_secondary_instruction_of_{:08x}", opcode),
@@ -174,6 +176,18 @@ impl CPU {
         self.load = (rt, v);
     }
 
+    fn op_add(&mut self, rt: usize, rs: usize, rd: usize) {
+        let s = self.r[rs] as i32;
+        let t = self.r[rt] as i32;
+
+        let v = match s.checked_add(t) {
+            Some(v) => v as u32,
+            None => panic!("ADD overflow"),
+        };
+
+        self.set_r(rd, v);
+    }
+
     fn op_addi(&mut self, imm_se: u32, rt: usize, rs: usize) {
         let imm_se = imm_se as i32;
 
@@ -202,9 +216,19 @@ impl CPU {
         let cop_rt = || opcode::RT.get(opcode) as usize;
         let cop_rd = || opcode::RD.get(opcode) as usize;
         match cop_rs() {
+            0b00000 => self.op_mfc0(cop_rt(), cop_rd()),
             0b00100 => self.op_mtc0(cop_rt(), cop_rd()),
             _ => panic!("Unhandled cop0 instruction: {:08x}", opcode),
         }
+    }
+
+    fn op_mfc0(&mut self, rt: usize, rd: usize) {
+        let v = match rd {
+            12 => self.sr,
+            13 => panic!("unhandled read from CAUSE register"),
+            _ => panic!("Unhandled read from cop0r{}", rd),
+        };
+        self.load = (rt, v);
     }
 
     fn op_mtc0(&mut self, rt: usize, rd: usize) {
@@ -253,6 +277,11 @@ impl CPU {
 
     fn op_or(&mut self, rt: usize, rs: usize, rd: usize) {
         let v = self.r[rs] | self.r[rt];
+        self.set_r(rd, v);
+    }
+
+    fn op_and(&mut self, rt: usize, rs: usize, rd: usize) {
+        let v = self.r[rs] & self.r[rt];
         self.set_r(rd, v);
     }
 

@@ -11,7 +11,7 @@ impl Ram {
     }
 
     pub fn load8(&self, addr: usize) -> u8 {
-            u8::from_le(self.data[addr])
+        u8::from_le(self.data[addr])
     }
 
     pub fn store8(&mut self, addr: usize, val: u8) {
