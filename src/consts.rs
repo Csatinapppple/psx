@@ -9,3 +9,4 @@ pub const SYS_CONTROL_START: usize = 0x1f801000;
 pub const SPU_START: usize = 0x1f801c00;
 pub const EXPANSION_1_START: usize = 0x1f000000;
 pub const EXPANSION_2_START: usize = 0x1f802000;
+pub const IRQ_START: usize = 0x1f801070;

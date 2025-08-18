@@ -89,6 +89,7 @@ impl CPU {
             0x00 => match secondary() {
                 0x00 => self.op_sll(imm5(), rt(), rd()),
                 0x08 => self.op_jr(rs()),
+                0x09 => self.op_jalr(rs(), rd()),
                 0x20 => self.op_add(rt(), rs(), rd()),
                 0x21 => self.op_addu(rt(), rs(), rd()),
                 0x24 => self.op_and(rt(), rs(), rd()),
@@ -96,22 +97,91 @@ impl CPU {
                 0x2b => self.op_sltu(rt(), rs(), rd()),
                 _ => panic!("unhandled_secondary_instruction_of_{:08x}", opcode),
             },
+            0x01 => self.op_bxx(imm_se(), rt(), rs()),
             0x02 => self.op_j(imm_jmp()),
             0x03 => self.op_jal(imm_jmp()),
             0x04 => self.op_beq(imm_se(), rt(), rs()),
             0x05 => self.op_bne(imm_se(), rt(), rs()),
+            0x06 => self.op_blez(imm_se(), rs()),
+            0x07 => self.op_bgtz(imm_se(), rs()),
             0x08 => self.op_addi(imm_se(), rt(), rs()),
             0x09 => self.op_addiu(imm_se(), rt(), rs()),
+            0x0a => self.op_slti(imm_se(), rt(), rs()),
             0x0c => self.op_andi(imm(), rt(), rs()),
             0x0d => self.op_ori(imm(), rt(), rs()),
             0x0f => self.op_lui(imm(), rt()),
             0x10 => self.op_cop0(opcode),
             0x20 => self.op_lb(imm_se(), rt(), rs()),
             0x23 => self.op_lw(imm_se(), rt(), rs()),
+            0x24 => self.op_lbu(imm_se(), rt(), rs()),
             0x28 => self.op_sb(imm_se(), rt(), rs()),
             0x29 => self.op_sh(imm_se(), rt(), rs()),
             0x2b => self.op_sw(imm_se(), rt(), rs()),
             _ => panic!("Unhandled_opcode::{:08x}", opcode),
+        }
+    }
+
+    fn op_slti(&mut self, imm_se: u32, rt: usize, rs: usize) {
+        let imm_se = imm_se as i32;
+        let v = (self.r[rs] as i32) < imm_se;
+        self.set_r(rt, v as u32);
+    }
+
+    // Encompasses BLTZ BGEZ BLTZAL BGEZAL
+    fn op_bxx(&mut self, imm_se: u32, rt: usize, rs: usize) {
+        let is_bgez = (rt & 1) as u32; //Branch if greater than or equal to zero
+        let is_link = rt >> 1 == 0b1000;
+
+        let v = self.r[rs] as i32;
+
+        //branch if lower than zero
+        let test = (v < 0) as u32;
+
+        let test = test ^ is_bgez;
+        //if test is true then its 1 and xors with is_bgez
+        /*
+
+           is_bgez | v < 0 | result
+             0        1       1
+             1        1       0
+             0        0       0
+             1        0       1
+
+            if its BGEZ and greater than/eq zero it branches
+            if its BLTZ then smaller than zero it branches
+        */
+        if is_link {
+            let ra = self.pc;
+            self.set_r(31, ra);
+        }
+        if test != 0 {
+            self.branch(imm_se);
+        }
+    }
+
+    fn op_jalr(&mut self, rs: usize, rd: usize) {
+        let ra = self.pc;
+        self.set_r(rd, ra);
+        self.pc = self.r[rs];
+    }
+
+    fn op_lbu(&mut self, imm_se: u32, rt: usize, rs: usize) {
+        let addr = self.r[rs].wrapping_add(imm_se) as usize;
+        let v = self.load8(addr);
+        self.load = (rt, v as u32);
+    }
+
+    fn op_blez(&mut self, imm_se: u32, rs: usize) {
+        let v = self.r[rs] as i32;
+        if v <= 0 {
+            self.branch(imm_se);
+        }
+    }
+
+    fn op_bgtz(&mut self, imm_se: u32, rs: usize) {
+        let v = self.r[rs] as i32;
+        if v > 0 {
+            self.branch(imm_se);
         }
     }
 

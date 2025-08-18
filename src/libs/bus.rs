@@ -106,6 +106,9 @@ impl Bus {
         } else if let Some(offset) = memory::SYS_CONTROL.contains(addr) {
             println!("SYS_CONTROL__store at addr {:08x}", offset);
             return;
+        } else if let Some(offset) = memory::IRQ_CONTROL.contains(addr) {
+            println!("IRQ control: {:x} <- {:08x}", offset, val);
+            return;
         }
 
         panic!("unhandled_store32_into_address{:08x}", addr);
