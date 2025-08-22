@@ -92,6 +92,7 @@ impl CPU {
                 0x09 => self.op_jalr(rs(), rd()),
                 0x20 => self.op_add(rt(), rs(), rd()),
                 0x21 => self.op_addu(rt(), rs(), rd()),
+                0x23 => self.op_subu(rt(), rs(), rd()),
                 0x24 => self.op_and(rt(), rs(), rd()),
                 0x25 => self.op_or(rt(), rs(), rd()),
                 0x2b => self.op_sltu(rt(), rs(), rd()),
@@ -119,6 +120,11 @@ impl CPU {
             0x2b => self.op_sw(imm_se(), rt(), rs()),
             _ => panic!("Unhandled_opcode::{:08x}", opcode),
         }
+    }
+
+    fn op_subu(&mut self, rt: usize, rs: usize, rd: usize) {
+        let v = self.r[rs].wrapping_sub(self.r[rt]);
+        self.set_r(rd, v);
     }
 
     fn op_slti(&mut self, imm_se: u32, rt: usize, rs: usize) {
