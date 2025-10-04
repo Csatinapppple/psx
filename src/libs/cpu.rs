@@ -88,6 +88,7 @@ impl CPU {
         match primary() {
             0x00 => match secondary() {
                 0x00 => self.op_sll(imm5(), rt(), rd()),
+                0x03 => self.op_sra(imm5(), rt(), rd()),
                 0x08 => self.op_jr(rs()),
                 0x09 => self.op_jalr(rs(), rd()),
                 0x20 => self.op_add(rt(), rs(), rd()),
@@ -120,6 +121,11 @@ impl CPU {
             0x2b => self.op_sw(imm_se(), rt(), rs()),
             _ => panic!("Unhandled_opcode::{:08x}", opcode),
         }
+    }
+
+    fn op_sra(&mut self, imm5: usize, rt: usize, rd: usize) {
+        let v = (self.r[rt] as i32) >> imm5;
+        self.set_r(rd, v as u32);
     }
 
     fn op_subu(&mut self, rt: usize, rs: usize, rd: usize) {
