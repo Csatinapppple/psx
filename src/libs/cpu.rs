@@ -1,6 +1,7 @@
 use crate::consts;
 use crate::libs::bus::Bus;
 use crate::libs::map::opcode;
+use std::fmt;
 
 pub struct CPU {
     bus: Bus,
@@ -8,13 +9,32 @@ pub struct CPU {
     load: (usize, u32),
     r: [u32; 32],
     out_r: [u32; 32],
+    opcode: u32,
     next_opcode: u32,
     sr: u32, // Status Register
+    hi: u32,
+    lo: u32,
+}
+
+impl fmt::Display for CPU {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{{
+    program_counter: {:08x},
+    load: (register: {:08x},value: {:08x}),
+    opcode: {:08x},
+    next_opcode: {:08x},
+    status_register: {:08x},
+}}",
+            self.pc, self.load.0, self.load.1, self.opcode, self.next_opcode, self.sr
+        )
+    }
 }
 
 impl CPU {
     pub fn run_next_opcode(&mut self) {
-        let opcode = self.next_opcode;
+        self.opcode = self.next_opcode;
 
         let (reg, val) = self.load;
         self.set_r(reg, val);
@@ -25,11 +45,9 @@ impl CPU {
 
         self.pc = self.pc.wrapping_add(4);
 
-        self.decode_and_execute(opcode);
+        self.decode_and_execute(self.opcode);
 
         self.r = self.out_r;
-
-        println!("curent opcode: {:08x}", opcode);
     }
 
     pub fn new(bus: Bus) -> Self {
@@ -40,6 +58,7 @@ impl CPU {
             load: (0, 0),
             r: registers,
             out_r: registers,
+            opcode: 0,
             next_opcode: 0,
             sr: 0,
         }
@@ -97,7 +116,10 @@ impl CPU {
                 0x24 => self.op_and(rt(), rs(), rd()),
                 0x25 => self.op_or(rt(), rs(), rd()),
                 0x2b => self.op_sltu(rt(), rs(), rd()),
-                _ => panic!("unhandled_secondary_instruction_of_{:08x}", opcode),
+                _ => panic!(
+                    "unhandled_secondary_instruction_of_{:08x}, CPU state {}",
+                    opcode, self
+                ),
             },
             0x01 => self.op_bxx(imm_se(), rt(), rs()),
             0x02 => self.op_j(imm_jmp()),
@@ -119,11 +141,11 @@ impl CPU {
             0x28 => self.op_sb(imm_se(), rt(), rs()),
             0x29 => self.op_sh(imm_se(), rt(), rs()),
             0x2b => self.op_sw(imm_se(), rt(), rs()),
-            _ => panic!("Unhandled_opcode::{:08x}", opcode),
+            _ => panic!("Unhandled_opcode::{:08x}, CPU state: {}", opcode, self),
         }
     }
 
-    fn op_sra(&mut self, imm5: usize, rt: usize, rd: usize) {
+    fn op_sra(&mut self, imm5: u32, rt: usize, rd: usize) {
         let v = (self.r[rt] as i32) >> imm5;
         self.set_r(rd, v as u32);
     }
@@ -300,7 +322,10 @@ impl CPU {
         match cop_rs() {
             0b00000 => self.op_mfc0(cop_rt(), cop_rd()),
             0b00100 => self.op_mtc0(cop_rt(), cop_rd()),
-            _ => panic!("Unhandled cop0 instruction: {:08x}", opcode),
+            _ => panic!(
+                "Unhandled cop0 instruction: {:08x}\n CPU state: {}",
+                opcode, self
+            ),
         }
     }
 
