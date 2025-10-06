@@ -16,22 +16,6 @@ pub struct CPU {
     lo: u32,
 }
 
-impl fmt::Display for CPU {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{{
-    program_counter: {:08x},
-    load: (register: {:08x},value: {:08x}),
-    opcode: {:08x},
-    next_opcode: {:08x},
-    status_register: {:08x},
-}}",
-            self.pc, self.load.0, self.load.1, self.opcode, self.next_opcode, self.sr
-        )
-    }
-}
-
 impl CPU {
     pub fn run_next_opcode(&mut self) {
         self.opcode = self.next_opcode;
@@ -61,6 +45,8 @@ impl CPU {
             opcode: 0,
             next_opcode: 0,
             sr: 0,
+            hi: 0,
+            lo: 0,
         }
     }
 
@@ -107,9 +93,12 @@ impl CPU {
         match primary() {
             0x00 => match secondary() {
                 0x00 => self.op_sll(imm5(), rt(), rd()),
+                0x02 => self.op_srl(imm5(), rt(), rd()),
                 0x03 => self.op_sra(imm5(), rt(), rd()),
                 0x08 => self.op_jr(rs()),
                 0x09 => self.op_jalr(rs(), rd()),
+                0x12 => self.op_mflo(rd()),
+                0x1a => self.op_div(rt(), rs()),
                 0x20 => self.op_add(rt(), rs(), rd()),
                 0x21 => self.op_addu(rt(), rs(), rd()),
                 0x23 => self.op_subu(rt(), rs(), rd()),
@@ -143,6 +132,31 @@ impl CPU {
             0x2b => self.op_sw(imm_se(), rt(), rs()),
             _ => panic!("Unhandled_opcode::{:08x}, CPU state: {}", opcode, self),
         }
+    }
+
+    fn op_mflo(&mut self, rd: usize) {
+        self.set_r(rd, self.lo);
+    }
+
+    fn op_div(&mut self, rt: usize, rs: usize) {
+        let num = self.r[rs] as i32;
+        let div = self.r[rt] as i32;
+
+        if div == 0 {
+            self.hi = num as u32;
+            self.lo = if num >= 0 { u32::MAX } else { 1 };
+        } else if num as u32 == 0x8000_0000 && div == -1 {
+            self.hi = 0;
+            self.lo = 0x8000_0000;
+        } else {
+            self.hi = (num & div) as u32;
+            self.lo = (num / div) as u32;
+        }
+    }
+
+    fn op_srl(&mut self, imm5: u32, rt: usize, rd: usize) {
+        let v = self.r[rt] >> imm5;
+        self.set_r(rd, v);
     }
 
     fn op_sra(&mut self, imm5: u32, rt: usize, rd: usize) {
@@ -418,5 +432,22 @@ impl CPU {
     fn set_r(&mut self, index: usize, val: u32) {
         self.out_r[index] = val;
         self.out_r[0] = 0;
+    }
+}
+
+impl fmt::Display for CPU {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{{
+    program_counter: {:08x},
+    opcode: {:08x},
+    next_opcode: {:08x},
+    status_register: {:08x},
+    hi: {:08x},
+    lo: {:08x}
+}}",
+            self.pc, self.opcode, self.next_opcode, self.sr, self.hi, self.lo
+        )
     }
 }
