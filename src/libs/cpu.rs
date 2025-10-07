@@ -1,6 +1,6 @@
 use crate::consts;
 use crate::libs::bus::Bus;
-use crate::libs::map::opcode;
+use crate::libs::map::opcode::Instruction;
 use std::fmt;
 
 pub struct CPU {
@@ -9,8 +9,8 @@ pub struct CPU {
     load: (usize, u32),
     r: [u32; 32],
     out_r: [u32; 32],
-    opcode: u32,
-    next_opcode: u32,
+    opcode: Instruction,
+    next_opcode: Instruction,
     sr: u32, // Status Register
     hi: u32,
     lo: u32,
@@ -25,7 +25,7 @@ impl CPU {
 
         self.load = (0, 0);
 
-        self.next_opcode = self.load32(self.pc as usize);
+        self.next_opcode = Instruction(self.load32(self.pc as usize));
 
         self.pc = self.pc.wrapping_add(4);
 
@@ -42,8 +42,8 @@ impl CPU {
             load: (0, 0),
             r: registers,
             out_r: registers,
-            opcode: 0,
-            next_opcode: 0,
+            opcode: Instruction(0),
+            next_opcode: Instruction(0),
             sr: 0,
             hi: 0,
             lo: 0,
@@ -76,62 +76,54 @@ impl CPU {
         self.bus.store32(addr, val);
     }
 
-    pub fn decode_and_execute(&mut self, opcode: u32) {
-        let primary = || opcode::PRIMARY.get(opcode);
-        let secondary = || opcode::SECONDARY.get(opcode);
-        let rt = || opcode::RT.get(opcode) as usize;
-        let rs = || opcode::RS.get(opcode) as usize;
-        let rd = || opcode::RD.get(opcode) as usize;
-        let imm = || opcode::IMM.get(opcode);
-        let imm_se = || {
-            let imm_tmp = opcode::IMM.get(opcode) as i16;
-            imm_tmp as u32
-        };
-        let imm5 = || opcode::IMM5.get(opcode);
-        let imm_jmp = || opcode::IMM_JMP.get(opcode);
-
-        match primary() {
-            0x00 => match secondary() {
-                0x00 => self.op_sll(imm5(), rt(), rd()),
-                0x02 => self.op_srl(imm5(), rt(), rd()),
-                0x03 => self.op_sra(imm5(), rt(), rd()),
-                0x08 => self.op_jr(rs()),
-                0x09 => self.op_jalr(rs(), rd()),
-                0x12 => self.op_mflo(rd()),
-                0x1a => self.op_div(rt(), rs()),
-                0x20 => self.op_add(rt(), rs(), rd()),
-                0x21 => self.op_addu(rt(), rs(), rd()),
-                0x23 => self.op_subu(rt(), rs(), rd()),
-                0x24 => self.op_and(rt(), rs(), rd()),
-                0x25 => self.op_or(rt(), rs(), rd()),
-                0x2b => self.op_sltu(rt(), rs(), rd()),
+    pub fn decode_and_execute(&mut self, i: Instruction) {
+        match i.primary() {
+            0x00 => match i.secondary() {
+                0x00 => self.op_sll(i.imm5(), i.rt(), i.rd()),
+                0x02 => self.op_srl(i.imm5(), i.rt(), i.rd()),
+                0x03 => self.op_sra(i.imm5(), i.rt(), i.rd()),
+                0x08 => self.op_jr(i.rs()),
+                0x09 => self.op_jalr(i.rs(), i.rd()),
+                0x12 => self.op_mflo(i.rd()),
+                0x1a => self.op_div(i.rt(), i.rs()),
+                0x20 => self.op_add(i.rt(), i.rs(), i.rd()),
+                0x21 => self.op_addu(i.rt(), i.rs(), i.rd()),
+                0x23 => self.op_subu(i.rt(), i.rs(), i.rd()),
+                0x24 => self.op_and(i.rt(), i.rs(), i.rd()),
+                0x25 => self.op_or(i.rt(), i.rs(), i.rd()),
+                0x2b => self.op_sltu(i.rt(), i.rs(), i.rd()),
                 _ => panic!(
                     "unhandled_secondary_instruction_of_{:08x}, CPU state {}",
-                    opcode, self
+                    i.0, self
                 ),
             },
-            0x01 => self.op_bxx(imm_se(), rt(), rs()),
-            0x02 => self.op_j(imm_jmp()),
-            0x03 => self.op_jal(imm_jmp()),
-            0x04 => self.op_beq(imm_se(), rt(), rs()),
-            0x05 => self.op_bne(imm_se(), rt(), rs()),
-            0x06 => self.op_blez(imm_se(), rs()),
-            0x07 => self.op_bgtz(imm_se(), rs()),
-            0x08 => self.op_addi(imm_se(), rt(), rs()),
-            0x09 => self.op_addiu(imm_se(), rt(), rs()),
-            0x0a => self.op_slti(imm_se(), rt(), rs()),
-            0x0c => self.op_andi(imm(), rt(), rs()),
-            0x0d => self.op_ori(imm(), rt(), rs()),
-            0x0f => self.op_lui(imm(), rt()),
-            0x10 => self.op_cop0(opcode),
-            0x20 => self.op_lb(imm_se(), rt(), rs()),
-            0x23 => self.op_lw(imm_se(), rt(), rs()),
-            0x24 => self.op_lbu(imm_se(), rt(), rs()),
-            0x28 => self.op_sb(imm_se(), rt(), rs()),
-            0x29 => self.op_sh(imm_se(), rt(), rs()),
-            0x2b => self.op_sw(imm_se(), rt(), rs()),
-            _ => panic!("Unhandled_opcode::{:08x}, CPU state: {}", opcode, self),
+            0x01 => self.op_bxx(i.imm_se(), i.rt(), i.rs()),
+            0x02 => self.op_j(i.imm_jmp()),
+            0x03 => self.op_jal(i.imm_jmp()),
+            0x04 => self.op_beq(i.imm_se(), i.rt(), i.rs()),
+            0x05 => self.op_bne(i.imm_se(), i.rt(), i.rs()),
+            0x06 => self.op_blez(i.imm_se(), i.rs()),
+            0x07 => self.op_bgtz(i.imm_se(), i.rs()),
+            0x08 => self.op_addi(i.imm_se(), i.rt(), i.rs()),
+            0x09 => self.op_addiu(i.imm_se(), i.rt(), i.rs()),
+            0x0a => self.op_slti(i.imm_se(), i.rt(), i.rs()),
+            0x0c => self.op_andi(i.imm(), i.rt(), i.rs()),
+            0x0d => self.op_ori(i.imm(), i.rt(), i.rs()),
+            0x0f => self.op_lui(i.imm(), i.rt()),
+            0x10 => self.op_cop0(i),
+            0x20 => self.op_lb(i.imm_se(), i.rt(), i.rs()),
+            0x23 => self.op_lw(i.imm_se(), i.rt(), i.rs()),
+            0x24 => self.op_lbu(i.imm_se(), i.rt(), i.rs()),
+            0x28 => self.op_sb(i.imm_se(), i.rt(), i.rs()),
+            0x29 => self.op_sh(i.imm_se(), i.rt(), i.rs()),
+            0x2b => self.op_sw(i.imm_se(), i.rt(), i.rs()),
+            _ => panic!("Unhandled_opcode::{:08x}, CPU state: {}", i.0, self),
         }
+    }
+
+    fn op_sltiu(&mut self, imm_se: u32, rt: usize, rs: usize) {
+        let v = self.r[rs] << imm_se;
+        self.set_r(rt, v);
     }
 
     fn op_mflo(&mut self, rd: usize) {
@@ -329,16 +321,13 @@ impl CPU {
         }
     }
 
-    fn op_cop0(&mut self, opcode: u32) {
-        let cop_rs = || opcode::RS.get(opcode) as usize;
-        let cop_rt = || opcode::RT.get(opcode) as usize;
-        let cop_rd = || opcode::RD.get(opcode) as usize;
-        match cop_rs() {
-            0b00000 => self.op_mfc0(cop_rt(), cop_rd()),
-            0b00100 => self.op_mtc0(cop_rt(), cop_rd()),
+    fn op_cop0(&mut self, i: Instruction) {
+        match i.rs() {
+            0b00000 => self.op_mfc0(i.rt(), i.rd()),
+            0b00100 => self.op_mtc0(i.rt(), i.rd()),
             _ => panic!(
                 "Unhandled cop0 instruction: {:08x}\n CPU state: {}",
-                opcode, self
+                i.0, self
             ),
         }
     }
@@ -447,7 +436,7 @@ impl fmt::Display for CPU {
     hi: {:08x},
     lo: {:08x}
 }}",
-            self.pc, self.opcode, self.next_opcode, self.sr, self.hi, self.lo
+            self.pc, self.opcode.0, self.next_opcode.0, self.sr, self.hi, self.lo
         )
     }
 }

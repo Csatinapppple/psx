@@ -45,7 +45,7 @@ pub mod memory {
 }
 
 pub mod opcode {
-    pub struct Range(usize, usize);
+    struct Range(usize, usize);
 
     /*
     Little-Endian bit table
@@ -53,22 +53,58 @@ pub mod opcode {
     */
 
     impl Range {
-        pub fn get(&self, opcode: u32) -> u32 {
+        fn get(&self, opcode: &Instruction) -> u32 {
             let Range(end, start) = self;
 
             let width = end - start + 1;
             let mask = (1 << width) - 1;
 
-            (opcode >> start) & mask
+            (opcode.0 >> start) & mask
         }
     }
 
-    pub const PRIMARY: Range = Range(31, 26);
-    pub const SECONDARY: Range = Range(5, 0);
-    pub const RD: Range = Range(15, 11);
-    pub const RT: Range = Range(20, 16);
-    pub const IMM: Range = Range(15, 0);
-    pub const IMM5: Range = Range(10, 6);
-    pub const IMM_JMP: Range = Range(25, 0);
-    pub const RS: Range = Range(25, 21);
+    #[derive(Copy, Clone)]
+    pub struct Instruction(pub u32);
+
+    impl Instruction {
+        const PRIMARY: Range = Range(31, 26);
+        const SECONDARY: Range = Range(5, 0);
+        const RD: Range = Range(15, 11);
+        const RT: Range = Range(20, 16);
+        const IMM: Range = Range(15, 0);
+        const IMM5: Range = Range(10, 6);
+        const IMM_JMP: Range = Range(25, 0);
+        const RS: Range = Range(25, 21);
+
+        pub fn primary(&self) -> u32 {
+            Self::PRIMARY.get(self)
+        }
+
+        pub fn secondary(&self) -> u32 {
+            Self::SECONDARY.get(self)
+        }
+
+        pub fn rd(&self) -> usize {
+            Self::RD.get(self) as usize
+        }
+        pub fn rt(&self) -> usize {
+            Self::RT.get(self) as usize
+        }
+        pub fn rs(&self) -> usize {
+            Self::RS.get(self) as usize
+        }
+        pub fn imm(&self) -> u32 {
+            Self::IMM.get(self)
+        }
+        pub fn imm_se(&self) -> u32 {
+            let imm_tmp = Self::IMM.get(self) as i16;
+            imm_tmp as u32
+        }
+        pub fn imm5(&self) -> u32 {
+            Self::IMM5.get(self)
+        }
+        pub fn imm_jmp(&self) -> u32 {
+            Self::IMM_JMP.get(self)
+        }
+    }
 }
