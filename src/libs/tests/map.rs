@@ -1,4 +1,4 @@
-mod opcode_range {
+mod instruction {
 
     use crate::libs::map::opcode::Instruction;
 

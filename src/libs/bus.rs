@@ -41,6 +41,9 @@ impl Bus {
             return Ok(self.ram.load32(offset));
         } else if let Some(offset) = memory::BIOS.contains(addr) {
             return Ok(self.bios.load32(offset));
+        } else if let Some(offset) = memory::IRQ_CONTROL.contains(addr) {
+            println!("IRQ Control read {:08x}", offset);
+            return Ok(0);
         }
 
         Err(format!("unhandled_load32_at_address_{:08x}", addr))

@@ -84,14 +84,17 @@ impl CPU {
                 0x03 => self.op_sra(i.imm5(), i.rt(), i.rd()),
                 0x08 => self.op_jr(i.rs()),
                 0x09 => self.op_jalr(i.rs(), i.rd()),
+                0x10 => self.op_mfhi(i.rd()),
                 0x12 => self.op_mflo(i.rd()),
                 0x1a => self.op_div(i.rt(), i.rs()),
+                0x1b => self.op_divu(i.rt(), i.rs()),
                 0x20 => self.op_add(i.rt(), i.rs(), i.rd()),
                 0x21 => self.op_addu(i.rt(), i.rs(), i.rd()),
                 0x23 => self.op_subu(i.rt(), i.rs(), i.rd()),
                 0x24 => self.op_and(i.rt(), i.rs(), i.rd()),
                 0x25 => self.op_or(i.rt(), i.rs(), i.rd()),
                 0x2b => self.op_sltu(i.rt(), i.rs(), i.rd()),
+                0x2a => self.op_slt(i.rt(), i.rs(), i.rd()),
                 _ => panic!(
                     "unhandled_secondary_instruction_of_{:08x}, CPU state {}",
                     i.0, self
@@ -107,6 +110,7 @@ impl CPU {
             0x08 => self.op_addi(i.imm_se(), i.rt(), i.rs()),
             0x09 => self.op_addiu(i.imm_se(), i.rt(), i.rs()),
             0x0a => self.op_slti(i.imm_se(), i.rt(), i.rs()),
+            0x0b => self.op_sltiu(i.imm_se(), i.rt(), i.rs()),
             0x0c => self.op_andi(i.imm(), i.rt(), i.rs()),
             0x0d => self.op_ori(i.imm(), i.rt(), i.rs()),
             0x0f => self.op_lui(i.imm(), i.rt()),
@@ -121,13 +125,37 @@ impl CPU {
         }
     }
 
+    fn op_slt(&mut self, rt: usize, rs: usize, rd: usize) {
+        let rs = self.r[rs] as i32;
+        let rt = self.r[rt] as i32;
+        let v = rs < rt;
+        self.set_r(rd, v as u32);
+    }
+
     fn op_sltiu(&mut self, imm_se: u32, rt: usize, rs: usize) {
-        let v = self.r[rs] << imm_se;
-        self.set_r(rt, v);
+        let v = self.r[rs] < imm_se;
+        self.set_r(rt, v as u32);
     }
 
     fn op_mflo(&mut self, rd: usize) {
         self.set_r(rd, self.lo);
+    }
+
+    fn op_mfhi(&mut self, rd: usize) {
+        self.set_r(rd, self.hi);
+    }
+
+    fn op_divu(&mut self, rt: usize, rs: usize) {
+        let num = self.r[rs];
+        let div = self.r[rt];
+
+        if div == 0 {
+            self.hi = num;
+            self.lo = 0xffff_ffff;
+        } else {
+            self.hi = num % div;
+            self.lo = num / div;
+        }
     }
 
     fn op_div(&mut self, rt: usize, rs: usize) {
