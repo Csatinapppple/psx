@@ -53,7 +53,16 @@ impl Bus {
         Self::check_alignment(addr, 2);
 
         if let Some(offset) = memory::SPU.contains(addr) {
-            println!("Unhandled write to SPU register {:x}", offset);
+            println!(
+                "Unhandled write16 to SPU register {:x} with val {:04x}",
+                offset, val
+            );
+            return;
+        } else if let Some(offset) = memory::TIMERS.contains(addr) {
+            println!(
+                "Unhandled write16 to timer register {:08x} with val {:04x}",
+                offset, val
+            );
             return;
         }
 

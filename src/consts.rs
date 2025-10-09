@@ -10,3 +10,4 @@ pub const SPU_START: usize = 0x1f801c00;
 pub const EXPANSION_1_START: usize = 0x1f000000;
 pub const EXPANSION_2_START: usize = 0x1f802000;
 pub const IRQ_START: usize = 0x1f801070;
+pub const TIMER_REGISTER_START: usize = 0x1f801100;
