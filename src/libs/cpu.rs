@@ -6,28 +6,62 @@ use std::fmt;
 pub struct CPU {
     bus: Bus,
     pc: u32, // Program Counter (PC)
+    next_pc: u32,
     load: (usize, u32),
     r: [u32; 32],
     out_r: [u32; 32],
     opcode: Instruction,
-    next_opcode: Instruction,
     sr: u32, // Status Register
     hi: u32,
     lo: u32,
+    current_pc: u32,
+    cause: u32,
+    epc: u32,
+}
+
+impl fmt::Display for CPU {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{{
+    program_counter: {:08x},
+    next_program_counter: {:08x},
+    opcode: {:08x},
+    status_register: {:08x},
+    hi: {:08x},
+    lo: {:08x},
+    current_pc {:08x},
+    cause: {:08x},
+    epc: {:08x}
+}}",
+            self.pc,
+            self.next_pc,
+            self.opcode.0,
+            self.sr,
+            self.hi,
+            self.lo,
+            self.current_pc,
+            self.cause,
+            self.epc
+        )
+    }
+}
+
+enum Exception {
+    SysCall = 0x8,
 }
 
 impl CPU {
     pub fn run_next_opcode(&mut self) {
-        self.opcode = self.next_opcode;
-
         let (reg, val) = self.load;
         self.set_r(reg, val);
 
         self.load = (0, 0);
 
-        self.next_opcode = Instruction(self.load32(self.pc as usize));
-
-        self.pc = self.pc.wrapping_add(4);
+        self.opcode = Instruction(self.load32(self.pc as usize));
+        self.current_pc = self.pc;
+        self.pc = self.next_pc;
+        self.next_pc = self.pc.wrapping_add(4);
 
         self.decode_and_execute(self.opcode);
 
@@ -36,17 +70,21 @@ impl CPU {
 
     pub fn new(bus: Bus) -> Self {
         let registers: [u32; 32] = [0; 32];
+        let start = consts::BIOS_START as u32;
         Self {
             bus: bus,
-            pc: consts::BIOS_START as u32, // Endereço inicial do BIOS do PS1
+            pc: start, // Endereço inicial do BIOS do PS1
+            next_pc: start.wrapping_add(4),
             load: (0, 0),
             r: registers,
             out_r: registers,
             opcode: Instruction(0),
-            next_opcode: Instruction(0),
             sr: 0,
             hi: 0,
             lo: 0,
+            current_pc: 0,
+            cause: 0,
+            epc: 0,
         }
     }
 
@@ -84,6 +122,7 @@ impl CPU {
                 0x03 => self.op_sra(i.imm5(), i.rt(), i.rd()),
                 0x08 => self.op_jr(i.rs()),
                 0x09 => self.op_jalr(i.rs(), i.rd()),
+                0x0c => self.exception(Exception::SysCall),
                 0x10 => self.op_mfhi(i.rd()),
                 0x12 => self.op_mflo(i.rd()),
                 0x1a => self.op_div(i.rt(), i.rs()),
@@ -123,6 +162,24 @@ impl CPU {
             0x2b => self.op_sw(i.imm_se(), i.rt(), i.rs()),
             _ => panic!("Unhandled_opcode::{:08x}, CPU state: {}", i.0, self),
         }
+    }
+
+    fn exception(&mut self, cause: Exception) {
+        let handler = match self.sr & (1 << 22) != 0 {
+            true => 0xbfc00180,
+            false => 0x80000000,
+        };
+
+        let mode = self.sr & 0x3f;
+        self.sr &= !0x3f;
+        self.sr |= (mode << 2) & 0x3f;
+
+        self.cause = (cause as u32) << 2;
+
+        self.epc = self.current_pc;
+
+        self.pc = handler;
+        self.next_pc = self.pc.wrapping_add(4);
     }
 
     fn op_slt(&mut self, rt: usize, rs: usize, rd: usize) {
@@ -219,7 +276,7 @@ impl CPU {
             if its BLTZ then smaller than zero it branches
         */
         if is_link {
-            let ra = self.pc;
+            let ra = self.next_pc;
             self.set_r(31, ra);
         }
         if test != 0 {
@@ -228,9 +285,9 @@ impl CPU {
     }
 
     fn op_jalr(&mut self, rs: usize, rd: usize) {
-        let ra = self.pc;
+        let ra = self.next_pc;
         self.set_r(rd, ra);
-        self.pc = self.r[rs];
+        self.next_pc = self.r[rs];
     }
 
     fn op_lbu(&mut self, imm_se: u32, rt: usize, rs: usize) {
@@ -267,7 +324,7 @@ impl CPU {
     }
 
     fn op_jr(&mut self, rs: usize) {
-        self.pc = self.r[rs];
+        self.next_pc = self.r[rs];
     }
 
     fn op_sh(&mut self, imm_se: u32, rt: usize, rs: usize) {
@@ -340,7 +397,7 @@ impl CPU {
 
     fn branch(&mut self, offset: u32) {
         let offset = offset << 2;
-        self.pc = self.pc.wrapping_add(offset).wrapping_sub(4);
+        self.next_pc = self.next_pc.wrapping_add(offset).wrapping_sub(4);
     }
 
     fn op_bne(&mut self, imm_se: u32, rt: usize, rs: usize) {
@@ -363,7 +420,8 @@ impl CPU {
     fn op_mfc0(&mut self, rt: usize, rd: usize) {
         let v = match rd {
             12 => self.sr,
-            13 => panic!("unhandled read from CAUSE register"),
+            13 => self.cause,
+            14 => self.epc,
             _ => panic!("Unhandled read from cop0r{}", rd),
         };
         self.load = (rt, v);
@@ -389,13 +447,13 @@ impl CPU {
     }
 
     fn op_jal(&mut self, imm_jmp: u32) {
-        let ra = self.pc;
+        let ra = self.next_pc;
         self.set_r(31, ra);
         self.op_j(imm_jmp);
     }
 
     fn op_j(&mut self, imm_jmp: u32) {
-        self.pc = (self.pc & 0xf0000000) | (imm_jmp << 2);
+        self.next_pc = (self.next_pc & 0xf0000000) | (imm_jmp << 2);
     }
 
     fn op_addiu(&mut self, imm_se: u32, rt: usize, rs: usize) {
@@ -449,22 +507,5 @@ impl CPU {
     fn set_r(&mut self, index: usize, val: u32) {
         self.out_r[index] = val;
         self.out_r[0] = 0;
-    }
-}
-
-impl fmt::Display for CPU {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{{
-    program_counter: {:08x},
-    opcode: {:08x},
-    next_opcode: {:08x},
-    status_register: {:08x},
-    hi: {:08x},
-    lo: {:08x}
-}}",
-            self.pc, self.opcode.0, self.next_opcode.0, self.sr, self.hi, self.lo
-        )
     }
 }
