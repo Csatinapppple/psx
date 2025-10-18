@@ -53,7 +53,10 @@ impl fmt::Display for CPU {
     }
 }
 
+#[derive(Debug)]
 enum Exception {
+    LoadAddressError = 0x4,
+    StoreAddressError = 0x5,
     SysCall = 0x8,
     Overflow = 0xc,
 }
@@ -65,8 +68,14 @@ impl CPU {
 
         self.load = (0, 0);
 
-        self.opcode = Instruction(self.load32(self.pc as usize));
         self.current_pc = self.pc;
+
+        if !Self::check_alignment(self.current_pc as usize, 4) {
+            self.exception(Exception::LoadAddressError);
+            return;
+        }
+
+        self.opcode = Instruction(self.load32(self.pc as usize));
         self.pc = self.next_pc;
         self.next_pc = self.pc.wrapping_add(4);
 
@@ -98,6 +107,10 @@ impl CPU {
             branch: false,
             delay_slot: false,
         }
+    }
+
+    fn check_alignment(addr: usize, alignment: usize) -> bool {
+        addr % alignment == 0
     }
 
     fn load32(&self, addr: usize) -> u32 {
@@ -179,6 +192,8 @@ impl CPU {
     }
 
     fn exception(&mut self, cause: Exception) {
+        println!("Executing Exception: {:?}", cause);
+
         let handler = match self.sr & (1 << 22) != 0 {
             true => 0xbfc00180,
             false => 0x80000000,
@@ -318,12 +333,6 @@ impl CPU {
         self.next_pc = self.r[rs];
     }
 
-    fn op_lbu(&mut self, imm_se: u32, rt: usize, rs: usize) {
-        let addr = self.r[rs].wrapping_add(imm_se) as usize;
-        let v = self.load8(addr);
-        self.load = (rt, v as u32);
-    }
-
     fn op_blez(&mut self, imm_se: u32, rs: usize) {
         let v = self.r[rs] as i32;
         if v <= 0 {
@@ -344,39 +353,9 @@ impl CPU {
         }
     }
 
-    fn op_lb(&mut self, imm_se: u32, rt: usize, rs: usize) {
-        let i = self.r[rs].wrapping_add(imm_se) as usize;
-        let v = self.load8(i) as i8;
-
-        self.load = (rt, v as u32);
-    }
-
     fn op_jr(&mut self, rs: usize) {
         self.branch = true;
         self.next_pc = self.r[rs];
-    }
-
-    fn op_sh(&mut self, imm_se: u32, rt: usize, rs: usize) {
-        if self.sr & 0x10000 != 0 {
-            println!("Ignoring store while cache is isolated");
-            return;
-        }
-        let v = (self.r[rt] & 0xffff) as u16;
-        let i = self.r[rs].wrapping_add(imm_se) as usize;
-
-        self.store16(i, v);
-    }
-
-    fn op_sb(&mut self, imm_se: u32, rt: usize, rs: usize) {
-        if self.sr & 0x10000 != 0 {
-            // Cache is isolated, ignore write
-            println!("Ignoring store while cache is isolated");
-            return;
-        }
-        let v = (self.r[rt] & 0xff) as u8;
-        let i = self.r[rs].wrapping_add(imm_se) as usize;
-
-        self.store8(i, v);
     }
 
     fn op_addu(&mut self, rt: usize, rs: usize, rd: usize) {
@@ -389,39 +368,24 @@ impl CPU {
         self.set_r(rd, v as u32);
     }
 
-    fn op_lw(&mut self, imm_se: u32, rt: usize, rs: usize) {
-        if self.sr & 0x10000 != 0 {
-            println!("Ignoring load while cache is isolated");
-            return;
-        }
-
-        let addr = self.r[rs].wrapping_add(imm_se);
-        let v = self.load32(addr as usize);
-        self.load = (rt, v);
-    }
-
     fn op_add(&mut self, rt: usize, rs: usize, rd: usize) {
         let s = self.r[rs] as i32;
         let t = self.r[rt] as i32;
 
-        let v = match s.checked_add(t) {
-            Some(v) => v as u32,
+        match s.checked_add(t) {
+            Some(v) => self.set_r(rd, v as u32),
             None => self.exception(Exception::Overflow),
         };
-
-        self.set_r(rd, v);
     }
 
     fn op_addi(&mut self, imm_se: u32, rt: usize, rs: usize) {
         let imm_se = imm_se as i32;
 
         let s = self.r[rs] as i32;
-        let v = match s.checked_add(imm_se) {
-            Some(v) => v as u32,
+        match s.checked_add(imm_se) {
+            Some(v) => self.set_r(rt, v as u32),
             None => self.exception(Exception::Overflow),
         };
-
-        self.set_r(rt, v);
     }
 
     fn branch(&mut self, offset: u32) {
@@ -532,6 +496,60 @@ impl CPU {
         self.set_r(rt, v);
     }
 
+    fn op_sb(&mut self, imm_se: u32, rt: usize, rs: usize) {
+        if self.sr & 0x10000 != 0 {
+            // Cache is isolated, ignore write
+            println!("Ignoring store while cache is isolated");
+            return;
+        }
+        let v = (self.r[rt] & 0xff) as u8;
+        let i = self.r[rs].wrapping_add(imm_se) as usize;
+
+        self.store8(i, v);
+    }
+    fn op_lb(&mut self, imm_se: u32, rt: usize, rs: usize) {
+        let i = self.r[rs].wrapping_add(imm_se) as usize;
+        let v = self.load8(i) as i8;
+
+        self.load = (rt, v as u32);
+    }
+
+    fn op_lbu(&mut self, imm_se: u32, rt: usize, rs: usize) {
+        let addr = self.r[rs].wrapping_add(imm_se) as usize;
+        let v = self.load8(addr);
+        self.load = (rt, v as u32);
+    }
+
+    fn op_sh(&mut self, imm_se: u32, rt: usize, rs: usize) {
+        if self.sr & 0x10000 != 0 {
+            println!("Ignoring store while cache is isolated");
+            return;
+        }
+        let v = (self.r[rt] & 0xffff) as u16;
+        let i = self.r[rs].wrapping_add(imm_se) as usize;
+
+        if Self::check_alignment(i, 2) {
+            self.store16(i, v);
+        } else {
+            self.exception(Exception::StoreAddressError);
+        }
+    }
+
+    fn op_lw(&mut self, imm_se: u32, rt: usize, rs: usize) {
+        if self.sr & 0x10000 != 0 {
+            println!("Ignoring load while cache is isolated");
+            return;
+        }
+
+        let addr = self.r[rs].wrapping_add(imm_se) as usize;
+
+        if Self::check_alignment(addr, 4) {
+            let v = self.load32(addr);
+            self.load = (rt, v);
+        } else {
+            self.exception(Exception::StoreAddressError);
+        }
+    }
     // Store Word
     fn op_sw(&mut self, imm_se: u32, rt: usize, rs: usize) {
         if self.sr & 0x10000 != 0 {
@@ -542,7 +560,11 @@ impl CPU {
         let addr = self.r[rs].wrapping_add(imm_se) as usize;
         let v = self.r[rt];
 
-        self.store32(addr, v);
+        if Self::check_alignment(addr, 4) {
+            self.store32(addr, v);
+        } else {
+            self.exception(Exception::StoreAddressError);
+        }
     }
 
     fn set_r(&mut self, index: usize, val: u32) {
