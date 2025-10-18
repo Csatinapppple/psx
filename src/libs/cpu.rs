@@ -17,6 +17,8 @@ pub struct CPU {
     current_pc: u32,
     cause: u32,
     epc: u32,
+    branch: bool,
+    delay_slot: bool,
 }
 
 impl fmt::Display for CPU {
@@ -32,7 +34,9 @@ impl fmt::Display for CPU {
     lo: {:08x},
     current_pc {:08x},
     cause: {:08x},
-    epc: {:08x}
+    epc: {:08x},
+    branch: {},
+    delay_slot: {}
 }}",
             self.pc,
             self.next_pc,
@@ -42,13 +46,16 @@ impl fmt::Display for CPU {
             self.lo,
             self.current_pc,
             self.cause,
-            self.epc
+            self.epc,
+            self.branch,
+            self.delay_slot
         )
     }
 }
 
 enum Exception {
     SysCall = 0x8,
+    Overflow = 0xc,
 }
 
 impl CPU {
@@ -62,6 +69,9 @@ impl CPU {
         self.current_pc = self.pc;
         self.pc = self.next_pc;
         self.next_pc = self.pc.wrapping_add(4);
+
+        self.delay_slot = self.branch;
+        self.branch = false;
 
         self.decode_and_execute(self.opcode);
 
@@ -85,6 +95,8 @@ impl CPU {
             current_pc: 0,
             cause: 0,
             epc: 0,
+            branch: false,
+            delay_slot: false,
         }
     }
 
@@ -124,7 +136,9 @@ impl CPU {
                 0x09 => self.op_jalr(i.rs(), i.rd()),
                 0x0c => self.exception(Exception::SysCall),
                 0x10 => self.op_mfhi(i.rd()),
+                0x11 => self.op_mthi(i.rs()),
                 0x12 => self.op_mflo(i.rd()),
+                0x13 => self.op_mtlo(i.rs()),
                 0x1a => self.op_div(i.rt(), i.rs()),
                 0x1b => self.op_divu(i.rt(), i.rs()),
                 0x20 => self.op_add(i.rt(), i.rs(), i.rd()),
@@ -178,8 +192,21 @@ impl CPU {
 
         self.epc = self.current_pc;
 
+        if self.delay_slot {
+            self.epc = self.epc.wrapping_sub(4);
+            self.cause |= 1 << 31;
+        }
+
         self.pc = handler;
         self.next_pc = self.pc.wrapping_add(4);
+    }
+
+    fn op_mtlo(&mut self, rs: usize) {
+        self.lo = self.r[rs];
+    }
+
+    fn op_mthi(&mut self, rs: usize) {
+        self.hi = self.r[rs];
     }
 
     fn op_slt(&mut self, rt: usize, rs: usize, rd: usize) {
@@ -287,6 +314,7 @@ impl CPU {
     fn op_jalr(&mut self, rs: usize, rd: usize) {
         let ra = self.next_pc;
         self.set_r(rd, ra);
+        self.branch = true;
         self.next_pc = self.r[rs];
     }
 
@@ -324,6 +352,7 @@ impl CPU {
     }
 
     fn op_jr(&mut self, rs: usize) {
+        self.branch = true;
         self.next_pc = self.r[rs];
     }
 
@@ -377,7 +406,7 @@ impl CPU {
 
         let v = match s.checked_add(t) {
             Some(v) => v as u32,
-            None => panic!("ADD overflow"),
+            None => self.exception(Exception::Overflow),
         };
 
         self.set_r(rd, v);
@@ -389,7 +418,7 @@ impl CPU {
         let s = self.r[rs] as i32;
         let v = match s.checked_add(imm_se) {
             Some(v) => v as u32,
-            None => panic!("ADDI overflow"),
+            None => self.exception(Exception::Overflow),
         };
 
         self.set_r(rt, v);
@@ -397,6 +426,7 @@ impl CPU {
 
     fn branch(&mut self, offset: u32) {
         let offset = offset << 2;
+        self.branch = true;
         self.next_pc = self.next_pc.wrapping_add(offset).wrapping_sub(4);
     }
 
@@ -410,11 +440,21 @@ impl CPU {
         match i.rs() {
             0b00000 => self.op_mfc0(i.rt(), i.rd()),
             0b00100 => self.op_mtc0(i.rt(), i.rd()),
+            0x10 => self.op_rfe(i),
             _ => panic!(
                 "Unhandled cop0 instruction: {:08x}\n CPU state: {}",
                 i.0, self
             ),
         }
+    }
+
+    fn op_rfe(&mut self, i: Instruction) {
+        if i.secondary() != 0b010000 {
+            panic!("Invalid cop0 instruction at rfe {:06b}", i.secondary());
+        }
+        let mode = self.sr & 0x3f;
+        self.sr &= !0x3f;
+        self.sr |= mode >> 2;
     }
 
     fn op_mfc0(&mut self, rt: usize, rd: usize) {
@@ -453,6 +493,7 @@ impl CPU {
     }
 
     fn op_j(&mut self, imm_jmp: u32) {
+        self.branch = true;
         self.next_pc = (self.next_pc & 0xf0000000) | (imm_jmp << 2);
     }
 
