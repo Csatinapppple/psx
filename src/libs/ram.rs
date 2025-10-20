@@ -18,6 +18,10 @@ impl Ram {
         self.data[addr] = val.to_le();
     }
 
+    pub fn store16(&mut self, addr: usize, val: u16) {
+        self.data[addr..addr + 2].copy_from_slice(&val.to_le_bytes());
+    }
+
     pub fn load32(&self, addr: usize) -> u32 {
         let bytes: [u8; 4] = self.data[addr..addr + 4]
             .try_into()

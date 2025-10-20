@@ -36,6 +36,9 @@ impl Bus {
         } else if let Some(offset) = memory::IRQ_CONTROL.contains(addr) {
             println!("IRQ Control read {:08x}", offset);
             return Ok(0);
+        } else if let Some(offset) = memory::DMA.contains(addr) {
+            println!("DMA read at: {:08x}", addr);
+            return Ok(0);
         }
 
         Err(format!("unhandled_load32_at_address_{:08x}", addr))
@@ -53,6 +56,10 @@ impl Bus {
                 "Unhandled write16 to timer register {:08x} with val {:04x}",
                 offset, val
             );
+            return;
+        } else if let Some(offset) = memory::RAM.contains(addr) {
+            println!("Write of WORD at RAM {:08x} with val: {:04x}", offset, val);
+            self.ram.store16(offset, val);
             return;
         }
 
@@ -108,6 +115,9 @@ impl Bus {
             return;
         } else if let Some(offset) = memory::IRQ_CONTROL.contains(addr) {
             println!("IRQ control: {:x} <- {:08x}", offset, val);
+            return;
+        } else if let Some(offset) = memory::DMA.contains(addr) {
+            println!("DMA write at {:08x} with val {:08x}", offset, val);
             return;
         }
 

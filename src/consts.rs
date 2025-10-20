@@ -11,3 +11,4 @@ pub const EXPANSION_1_START: usize = 0x1f000000;
 pub const EXPANSION_2_START: usize = 0x1f802000;
 pub const IRQ_START: usize = 0x1f801070;
 pub const TIMER_REGISTER_START: usize = 0x1f801100;
+pub const DMA_START: usize = 0x1f801080;

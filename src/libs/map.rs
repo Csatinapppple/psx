@@ -43,6 +43,7 @@ pub mod memory {
     pub const EXPANSION_2: Range = Range(consts::EXPANSION_2_START, 66);
     pub const IRQ_CONTROL: Range = Range(consts::IRQ_START, 8);
     pub const TIMERS: Range = Range(consts::TIMER_REGISTER_START, 48);
+    pub const DMA: Range = Range(consts::DMA_START, 0x80);
 }
 
 pub mod opcode {
