@@ -18,6 +18,14 @@ impl Ram {
         self.data[addr] = val.to_le();
     }
 
+    pub fn load16(&self, addr: usize) -> u16 {
+        let bytes: [u8; 2] = self.data[addr..addr + 2]
+            .try_into()
+            .expect("Failed to convert slice to array in load16");
+
+        u16::from_le_bytes(bytes)
+    }
+
     pub fn store16(&mut self, addr: usize, val: u16) {
         self.data[addr..addr + 2].copy_from_slice(&val.to_le_bytes());
     }
@@ -25,7 +33,7 @@ impl Ram {
     pub fn load32(&self, addr: usize) -> u32 {
         let bytes: [u8; 4] = self.data[addr..addr + 4]
             .try_into()
-            .expect("Failed to convert slice to array in Bios.rs");
+            .expect("Failed to convert slice to array in load32");
 
         u32::from_le_bytes(bytes)
     }

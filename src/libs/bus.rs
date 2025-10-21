@@ -28,6 +28,16 @@ impl Bus {
         Err(format!("unhandled load8 at address {:08x}", addr))
     }
 
+    pub fn load16(&self, addr: usize) -> Result<u16, String> {
+        if let Some(offset) = memory::SPU.contains(addr) {
+            println!("Unhandled load16 from SPU register {:08x}", offset);
+            return Ok(0);
+        } else if let Some(offset) = memory::RAM.contains(addr) {
+            return Ok(self.ram.load16(offset));
+        }
+        Err(format!("Unhandled load16 at address {:08x}", addr))
+    }
+
     pub fn load32(&self, addr: usize) -> Result<u32, String> {
         if let Some(offset) = memory::RAM.contains(addr) {
             return Ok(self.ram.load32(offset));

@@ -114,17 +114,24 @@ impl CPU {
     }
 
     fn load32(&self, addr: usize) -> u32 {
-        match self.bus.load32(addr) {
-            Ok(integer) => return integer,
+        return match self.bus.load32(addr) {
+            Ok(val) => val,
             Err(string) => panic!("{}", string),
-        }
+        };
+    }
+
+    fn load16(&self, addr: usize) -> u16 {
+        return match self.bus.load16(addr) {
+            Ok(val) => val,
+            Err(string) => panic!("{}", string),
+        };
     }
 
     fn load8(&self, addr: usize) -> u8 {
-        match self.bus.load8(addr) {
-            Ok(integer) => return integer,
+        return match self.bus.load8(addr) {
+            Ok(val) => val,
             Err(string) => panic!("{}", string),
-        }
+        };
     }
 
     fn store8(&mut self, addr: usize, val: u8) {
@@ -184,6 +191,7 @@ impl CPU {
             0x20 => self.op_lb(i.imm_se(), i.rt(), i.rs()),
             0x23 => self.op_lw(i.imm_se(), i.rt(), i.rs()),
             0x24 => self.op_lbu(i.imm_se(), i.rt(), i.rs()),
+            0x25 => self.op_lhu(i.imm_se(), i.rt(), i.rs()),
             0x28 => self.op_sb(i.imm_se(), i.rt(), i.rs()),
             0x29 => self.op_sh(i.imm_se(), i.rt(), i.rs()),
             0x2b => self.op_sw(i.imm_se(), i.rt(), i.rs()),
@@ -518,6 +526,16 @@ impl CPU {
         let addr = self.r[rs].wrapping_add(imm_se) as usize;
         let v = self.load8(addr);
         self.load = (rt, v as u32);
+    }
+
+    fn op_lhu(&mut self, imm_se: u32, rt: usize, rs: usize) {
+        let addr = self.r[rs].wrapping_add(imm_se) as usize;
+        if Self::check_alignment(addr, 2) {
+            let v = self.load16(addr);
+            self.load = (rt, v as u32);
+        } else {
+            self.exception(Exception::LoadAddressError);
+        }
     }
 
     fn op_sh(&mut self, imm_se: u32, rt: usize, rs: usize) {
