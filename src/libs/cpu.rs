@@ -152,6 +152,7 @@ impl CPU {
                 0x00 => self.op_sll(i.imm5(), i.rt(), i.rd()),
                 0x02 => self.op_srl(i.imm5(), i.rt(), i.rd()),
                 0x03 => self.op_sra(i.imm5(), i.rt(), i.rd()),
+                0x04 => self.op_sllv(i.rt(), i.rs(), i.rd()),
                 0x08 => self.op_jr(i.rs()),
                 0x09 => self.op_jalr(i.rs(), i.rd()),
                 0x0c => self.exception(Exception::SysCall),
@@ -189,6 +190,7 @@ impl CPU {
             0x0f => self.op_lui(i.imm(), i.rt()),
             0x10 => self.op_cop0(i),
             0x20 => self.op_lb(i.imm_se(), i.rt(), i.rs()),
+            0x21 => self.op_lh(i.imm_se(), i.rt(), i.rs()),
             0x23 => self.op_lw(i.imm_se(), i.rt(), i.rs()),
             0x24 => self.op_lbu(i.imm_se(), i.rt(), i.rs()),
             0x25 => self.op_lhu(i.imm_se(), i.rt(), i.rs()),
@@ -230,6 +232,11 @@ impl CPU {
 
     fn op_mthi(&mut self, rs: usize) {
         self.hi = self.r[rs];
+    }
+
+    fn op_sllv(&mut self, rt: usize, rs: usize, rd: usize) {
+        let v = self.r[rt] << (self.r[rs] & 0x1f);
+        self.set_r(rd, v as u32);
     }
 
     fn op_slt(&mut self, rt: usize, rs: usize, rd: usize) {
@@ -528,8 +535,20 @@ impl CPU {
         self.load = (rt, v as u32);
     }
 
+    fn op_lh(&mut self, imm_se: u32, rt: usize, rs: usize) {
+        let addr = self.r[rs].wrapping_add(imm_se) as usize;
+
+        if Self::check_alignment(addr, 2) {
+            let v = self.load16(addr) as i16;
+            self.load = (rt, v as u32);
+        } else {
+            self.exception(Exception::LoadAddressError);
+        }
+    }
+
     fn op_lhu(&mut self, imm_se: u32, rt: usize, rs: usize) {
         let addr = self.r[rs].wrapping_add(imm_se) as usize;
+
         if Self::check_alignment(addr, 2) {
             let v = self.load16(addr);
             self.load = (rt, v as u32);
