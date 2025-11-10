@@ -167,6 +167,7 @@ impl CPU {
                 0x23 => self.op_subu(i.rt(), i.rs(), i.rd()),
                 0x24 => self.op_and(i.rt(), i.rs(), i.rd()),
                 0x25 => self.op_or(i.rt(), i.rs(), i.rd()),
+                0x27 => self.op_nor(i.rt(), i.rs(), i.rd()),
                 0x2b => self.op_sltu(i.rt(), i.rs(), i.rd()),
                 0x2a => self.op_slt(i.rt(), i.rs(), i.rd()),
                 _ => panic!(
@@ -232,6 +233,11 @@ impl CPU {
 
     fn op_mthi(&mut self, rs: usize) {
         self.hi = self.r[rs];
+    }
+
+    fn op_nor(&mut self, rt: usize, rs: usize, rd: usize) {
+        let v = !(self.r[rs] | self.r[rt]);
+        self.set_r(rd, v);
     }
 
     fn op_sllv(&mut self, rt: usize, rs: usize, rd: usize) {
