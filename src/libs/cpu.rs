@@ -153,6 +153,8 @@ impl CPU {
                 0x02 => self.op_srl(i.imm5(), i.rt(), i.rd()),
                 0x03 => self.op_sra(i.imm5(), i.rt(), i.rd()),
                 0x04 => self.op_sllv(i.rt(), i.rs(), i.rd()),
+                0x06 => self.op_srlv(i.rt(), i.rs(), i.rd()),
+                0x07 => self.op_srav(i.rt(), i.rs(), i.rd()),
                 0x08 => self.op_jr(i.rs()),
                 0x09 => self.op_jalr(i.rs(), i.rd()),
                 0x0c => self.exception(Exception::SysCall),
@@ -162,6 +164,7 @@ impl CPU {
                 0x13 => self.op_mtlo(i.rs()),
                 0x1a => self.op_div(i.rt(), i.rs()),
                 0x1b => self.op_divu(i.rt(), i.rs()),
+                0x19 => self.op_multu(i.rt(), i.rs()),
                 0x20 => self.op_add(i.rt(), i.rs(), i.rd()),
                 0x21 => self.op_addu(i.rt(), i.rs(), i.rd()),
                 0x23 => self.op_subu(i.rt(), i.rs(), i.rd()),
@@ -225,6 +228,14 @@ impl CPU {
 
         self.pc = handler;
         self.next_pc = self.pc.wrapping_add(4);
+    }
+
+    fn op_multu(&mut self, rt: usize, rs: usize) {
+        let a = self.r[rs] as u64;
+        let b = self.r[rt] as u64;
+        let v = a * b;
+        self.hi = (v >> 32) as u32;
+        self.lo = v as u32;
     }
 
     fn op_mtlo(&mut self, rs: usize) {
@@ -299,8 +310,18 @@ impl CPU {
         self.set_r(rd, v);
     }
 
+    fn op_srlv(&mut self, rt: usize, rs: usize, rd: usize) {
+        let v = self.r[rt] >> (self.r[rs] & 0x1f);
+        self.set_r(rd, v);
+    }
+
     fn op_sra(&mut self, imm5: u32, rt: usize, rd: usize) {
         let v = (self.r[rt] as i32) >> imm5;
+        self.set_r(rd, v as u32);
+    }
+
+    fn op_srav(&mut self, rt: usize, rs: usize, rd: usize) {
+        let v = (self.r[rt] as i32) >> (self.r[rs] & 0x1f);
         self.set_r(rd, v as u32);
     }
 
