@@ -135,15 +135,21 @@ impl CPU {
     }
 
     fn store8(&mut self, addr: usize, val: u8) {
-        self.bus.store8(addr, val);
+        self.bus
+            .store8(addr, val)
+            .unwrap_or_else(|string| panic!("{}", string));
     }
 
     fn store16(&mut self, addr: usize, val: u16) {
-        self.bus.store16(addr, val);
+        self.bus
+            .store16(addr, val)
+            .unwrap_or_else(|string| panic!("{}", string));
     }
 
     fn store32(&mut self, addr: usize, val: u32) {
-        self.bus.store32(addr, val);
+        self.bus
+            .store32(addr, val)
+            .unwrap_or_else(|string| panic!("{}", string));
     }
 
     pub fn decode_and_execute(&mut self, i: Instruction) {

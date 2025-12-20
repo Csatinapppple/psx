@@ -44,6 +44,7 @@ pub mod memory {
     pub const IRQ_CONTROL: Range = Range(consts::IRQ_START, 8);
     pub const TIMERS: Range = Range(consts::TIMER_REGISTER_START, 48);
     pub const DMA: Range = Range(consts::DMA_START, 0x80);
+    pub const GPU: Range = Range(consts::GPU_START, 8);
 }
 
 pub mod opcode {
