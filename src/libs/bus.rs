@@ -55,7 +55,10 @@ impl Bus {
             return Ok(0);
         } else if let Some(offset) = memory::GPU.contains(addr) {
             println!("GPU read at: {:08x}", addr);
-            return Ok(0);
+            return match offset {
+                4 => Ok(0x1000_0000),
+                _ => Ok(0),
+            };
         }
 
         Err(format!("unhandled_load32_at_address_{:08x}", addr))
