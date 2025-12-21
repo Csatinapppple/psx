@@ -34,7 +34,11 @@ impl Bus {
             return Ok(0);
         } else if let Some(offset) = memory::RAM.contains(addr) {
             return Ok(self.ram.load16(offset));
+        } else if let Some(offset) = memory::IRQ_CONTROL.contains(addr) {
+            println!("IRQ control load16 at {:04x}", addr);
+            return Ok(0);
         }
+
         Err(format!("Unhandled load16 at address {:08x}", addr))
     }
 
@@ -73,6 +77,9 @@ impl Bus {
         } else if let Some(offset) = memory::RAM.contains(addr) {
             println!("Write of WORD at RAM {:08x} with val: {:04x}", offset, val);
             self.ram.store16(offset, val);
+            return Ok(());
+        } else if let Some(offset) = memory::IRQ_CONTROL.contains(addr) {
+            println!("IRQ control store16: {:08x} <- {:04x}", offset, val);
             return Ok(());
         }
 
