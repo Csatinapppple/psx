@@ -58,6 +58,7 @@ enum Exception {
     LoadAddressError = 0x4,
     StoreAddressError = 0x5,
     SysCall = 0x8,
+    Break = 0x9,
     Overflow = 0xc,
 }
 
@@ -164,15 +165,18 @@ impl CPU {
                 0x08 => self.op_jr(i.rs()),
                 0x09 => self.op_jalr(i.rs(), i.rd()),
                 0x0c => self.exception(Exception::SysCall),
+                0x0d => self.exception(Exception::Break),
                 0x10 => self.op_mfhi(i.rd()),
                 0x11 => self.op_mthi(i.rs()),
                 0x12 => self.op_mflo(i.rd()),
                 0x13 => self.op_mtlo(i.rs()),
                 0x1a => self.op_div(i.rt(), i.rs()),
                 0x1b => self.op_divu(i.rt(), i.rs()),
+                0x18 => self.op_mult(i.rt(), i.rs()),
                 0x19 => self.op_multu(i.rt(), i.rs()),
                 0x20 => self.op_add(i.rt(), i.rs(), i.rd()),
                 0x21 => self.op_addu(i.rt(), i.rs(), i.rd()),
+                0x22 => self.op_sub(i.rt(), i.rs(), i.rd()),
                 0x23 => self.op_subu(i.rt(), i.rs(), i.rd()),
                 0x24 => self.op_and(i.rt(), i.rs(), i.rd()),
                 0x25 => self.op_or(i.rt(), i.rs(), i.rd()),
@@ -235,6 +239,14 @@ impl CPU {
 
         self.pc = handler;
         self.next_pc = self.pc.wrapping_add(4);
+    }
+
+    fn op_mult(&mut self, rt: usize, rs: usize) {
+        let a = (self.r[rs] as i32) as i64;
+        let b = (self.r[rt] as i32) as i64;
+        let v = (a * b) as u64;
+        self.hi = (v >> 32) as u32;
+        self.lo = v as u32;
     }
 
     fn op_multu(&mut self, rt: usize, rs: usize) {
@@ -335,6 +347,15 @@ impl CPU {
     fn op_srav(&mut self, rt: usize, rs: usize, rd: usize) {
         let v = (self.r[rt] as i32) >> (self.r[rs] & 0x1f);
         self.set_r(rd, v as u32);
+    }
+
+    fn op_sub(&mut self, rt: usize, rs: usize, rd: usize) {
+        let a = self.r[rs] as i32;
+        let b = self.r[rt] as i32;
+        match a.checked_sub(b) {
+            Some(v) => self.set_r(rd, v as u32),
+            None => self.exception(Exception::Overflow),
+        };
     }
 
     fn op_subu(&mut self, rt: usize, rs: usize, rd: usize) {
