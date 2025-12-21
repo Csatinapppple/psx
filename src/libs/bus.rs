@@ -21,7 +21,7 @@ impl Bus {
         } else if let Some(offset) = memory::BIOS.contains(addr) {
             return Ok(self.bios.load8(offset));
         } else if let Some(offset) = memory::EXPANSION_1.contains(addr) {
-            println!("load8 at addr {:08x} EXPANSION_1", offset);
+            println!("load8 at addr {:08x} EXPANSION_1", addr);
             return Ok(0xff);
         }
 
@@ -79,7 +79,7 @@ impl Bus {
             self.ram.store16(offset, val);
             return Ok(());
         } else if let Some(offset) = memory::IRQ_CONTROL.contains(addr) {
-            println!("IRQ control store16: {:08x} <- {:04x}", offset, val);
+            println!("IRQ control store16: {:08x} <- {:04x}", addr, val);
             return Ok(());
         }
 
@@ -137,13 +137,19 @@ impl Bus {
             println!("SYS_CONTROL__store at addr {:08x}", offset);
             return Ok(());
         } else if let Some(offset) = memory::IRQ_CONTROL.contains(addr) {
-            println!("IRQ control: {:x} <- {:08x}", offset, val);
+            println!("IRQ control: {:x} <- {:08x}", addr, val);
             return Ok(());
         } else if let Some(offset) = memory::DMA.contains(addr) {
-            println!("DMA write at {:08x} with val {:08x}", offset, val);
+            println!("DMA write at {:08x} with val {:08x}", addr, val);
             return Ok(());
         } else if let Some(offset) = memory::GPU.contains(addr) {
-            println!("GPU write at {:08x} with val {:08x}", offset, val);
+            println!("GPU write at {:08x} with val {:08x}", addr, val);
+            return Ok(());
+        } else if let Some(offset) = memory::TIMERS.contains(addr) {
+            println!(
+                "Unhandled store32 to timer register at {:08x} with val {:08x}",
+                addr, val
+            );
             return Ok(());
         }
 
