@@ -211,6 +211,7 @@ impl CPU {
             0x13 => self.exception(Exception::CoprocessorError), // cop3
             0x20 => self.op_lb(i.imm_se(), i.rt(), i.rs()),
             0x21 => self.op_lh(i.imm_se(), i.rt(), i.rs()),
+            0x22 => self.op_lwl(i.imm_se(), i.rt(), i.rs()),
             0x23 => self.op_lw(i.imm_se(), i.rt(), i.rs()),
             0x24 => self.op_lbu(i.imm_se(), i.rt(), i.rs()),
             0x25 => self.op_lhu(i.imm_se(), i.rt(), i.rs()),
@@ -661,6 +662,26 @@ impl CPU {
             self.exception(Exception::StoreAddressError);
         }
     }
+
+    fn op_lwl(&mut self, imm_se: u32, rt: usize, rs: usize) {
+        let addr = self.r[rs].wrapping_add(imm_se);
+
+        let cur_v = self.out_r[rt];
+
+        let aligned_addr = addr & !3;
+        let aligned_word = self.load32(aligned_addr as usize);
+
+        let v = match addr & 3 {
+            0 => (cur_v & 0x00ff_ffff) | (aligned_word << 24),
+            1 => (cur_v & 0x0000_ffff) | (aligned_word << 16),
+            2 => (cur_v & 0x0000_00ff) | (aligned_word << 8),
+            3 => (cur_v & 0x0000_0000) | (aligned_word),
+            _ => unreachable!(),
+        };
+
+        self.load = (rt, v);
+    }
+
     // Store Word
     fn op_sw(&mut self, imm_se: u32, rt: usize, rs: usize) {
         if self.sr & 0x10000 != 0 {
