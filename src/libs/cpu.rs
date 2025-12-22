@@ -215,6 +215,7 @@ impl CPU {
             0x23 => self.op_lw(i.imm_se(), i.rt(), i.rs()),
             0x24 => self.op_lbu(i.imm_se(), i.rt(), i.rs()),
             0x25 => self.op_lhu(i.imm_se(), i.rt(), i.rs()),
+            0x26 => self.op_lwr(i.imm_se(), i.rt(), i.rs()),
             0x28 => self.op_sb(i.imm_se(), i.rt(), i.rs()),
             0x29 => self.op_sh(i.imm_se(), i.rt(), i.rs()),
             0x2b => self.op_sw(i.imm_se(), i.rt(), i.rs()),
@@ -675,7 +676,26 @@ impl CPU {
             0 => (cur_v & 0x00ff_ffff) | (aligned_word << 24),
             1 => (cur_v & 0x0000_ffff) | (aligned_word << 16),
             2 => (cur_v & 0x0000_00ff) | (aligned_word << 8),
-            3 => (cur_v & 0x0000_0000) | (aligned_word),
+            3 => (cur_v & 0x0000_0000) | aligned_word,
+            _ => unreachable!(),
+        };
+
+        self.load = (rt, v);
+    }
+
+    fn op_lwr(&mut self, imm_se: u32, rt: usize, rs: usize) {
+        let addr = self.r[rt].wrapping_add(imm_se);
+
+        let cur_v = self.out_r[rt];
+
+        let aligned_addr = addr & !3;
+        let aligned_word = self.load32(aligned_addr as usize);
+
+        let v = match addr & 3 {
+            0 => (cur_v & 0x0000_0000) | aligned_word,
+            1 => (cur_v & 0xff00_0000) | (aligned_word >> 8),
+            2 => (cur_v & 0xffff_0000) | (aligned_word >> 16),
+            3 => (cur_v & 0xffff_ff00) | (aligned_word >> 24),
             _ => unreachable!(),
         };
 
