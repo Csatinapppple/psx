@@ -59,6 +59,7 @@ enum Exception {
     StoreAddressError = 0x5,
     SysCall = 0x8,
     Break = 0x9,
+    CoprocessorError = 0xb,
     Overflow = 0xc,
 }
 
@@ -202,8 +203,12 @@ impl CPU {
             0x0b => self.op_sltiu(i.imm_se(), i.rt(), i.rs()),
             0x0c => self.op_andi(i.imm(), i.rt(), i.rs()),
             0x0d => self.op_ori(i.imm(), i.rt(), i.rs()),
+            0x0e => self.op_xori(i.imm(), i.rt(), i.rs()),
             0x0f => self.op_lui(i.imm(), i.rt()),
             0x10 => self.op_cop0(i),
+            0x11 => self.exception(Exception::CoprocessorError), // cop1
+            0x12 => self.op_cop2(i),
+            0x13 => self.exception(Exception::CoprocessorError), // cop3
             0x20 => self.op_lb(i.imm_se(), i.rt(), i.rs()),
             0x21 => self.op_lh(i.imm_se(), i.rt(), i.rs()),
             0x23 => self.op_lw(i.imm_se(), i.rt(), i.rs()),
@@ -268,6 +273,11 @@ impl CPU {
     fn op_nor(&mut self, rt: usize, rs: usize, rd: usize) {
         let v = !(self.r[rs] | self.r[rt]);
         self.set_r(rd, v);
+    }
+
+    fn op_xori(&mut self, imm: u32, rt: usize, rs: usize) {
+        let v = self.r[rs] ^ imm;
+        self.set_r(rt, v);
     }
 
     fn op_xor(&mut self, rt: usize, rs: usize, rd: usize) {
@@ -485,6 +495,10 @@ impl CPU {
                 i.0, self
             ),
         }
+    }
+
+    fn op_cop2(&mut self, i: Instruction) {
+        panic!("unhandled GTE instruction: {:08x}", i.0);
     }
 
     fn op_rfe(&mut self, i: Instruction) {
