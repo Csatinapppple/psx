@@ -219,6 +219,8 @@ impl CPU {
             0x28 => self.op_sb(i.imm_se(), i.rt(), i.rs()),
             0x29 => self.op_sh(i.imm_se(), i.rt(), i.rs()),
             0x2b => self.op_sw(i.imm_se(), i.rt(), i.rs()),
+            0x2a => self.op_swl(i.imm_se(), i.rt(), i.rs()),
+            0x2e => self.op_swr(i.imm_se(), i.rt(), i.rs()),
             _ => panic!("Unhandled_opcode::{:08x}, CPU state: {}", i.0, self),
         }
     }
@@ -717,6 +719,42 @@ impl CPU {
         } else {
             self.exception(Exception::StoreAddressError);
         }
+    }
+
+    fn op_swl(&mut self, imm_se: u32, rt: usize, rs: usize) {
+        let addr = self.r[rs].wrapping_add(imm_se);
+        let v = self.r[rt];
+
+        let aligned_addr = addr & !3;
+        let cur_mem = self.load32(aligned_addr as usize);
+
+        let mem = match addr & 3 {
+            0 => (cur_mem & 0xffff_ff00) | (v >> 24),
+            1 => (cur_mem & 0xffff_0000) | (v >> 16),
+            2 => (cur_mem & 0xff00_0000) | (v >> 8),
+            3 => cur_mem | v,
+            _ => unreachable!(),
+        };
+
+        self.store32(aligned_addr, mem);
+    }
+
+    fn op_swr(&mut self, imm_se: u32, rt: usize, rs: usize) {
+        let addr = self.r[rs].wrapping_add(imm_se);
+        let v = self.r[rt];
+
+        let aligned_addr = addr & !3;
+        let cur_mem = self.load32(aligned_addr as usize);
+
+        let mem = match addr & 3 {
+            0 => cur_mem | v,
+            1 => (cur_mem & 0x0000_00ff) | (v << 8),
+            2 => (cur_mem & 0x0000_ffff) | (v << 16),
+            3 => (cur_mem & 0x00ff_ffff) | (v << 24),
+            _ => unreachable!(),
+        };
+
+        self.store32(aligned_addr, mem);
     }
 
     fn set_r(&mut self, index: usize, val: u32) {
