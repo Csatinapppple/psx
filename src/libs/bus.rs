@@ -1,10 +1,12 @@
 use crate::libs::bios::Bios;
+use crate::libs::dma::Dma;
 use crate::libs::map::memory;
 use crate::libs::ram::Ram;
 
 pub struct Bus {
     bios: Bios,
     ram: Ram,
+    dma: Dma,
 }
 
 impl Bus {
@@ -12,7 +14,28 @@ impl Bus {
         Self {
             bios: bios,
             ram: ram,
+            dma: Dma::new(),
         }
+    }
+
+    fn dma_reg(&self, offset: usize) -> Result<u32, String> {
+        match offset {
+            0x70 => Ok(self.dma.control),
+            _ => Err(format!("unhandled DMA access at Offset: {:08x}", offset)),
+        }
+    }
+
+    fn set_dma_reg(&mut self, offset: usize, val: u32) -> Result<(), String> {
+        match offset {
+            0x70 => self.dma.control = val,
+            _ => {
+                return Err(format!(
+                    "unhandled DMA write access at Offset: {:08x}",
+                    offset
+                ))
+            }
+        };
+        Ok(())
     }
 
     pub fn load8(&self, addr: usize) -> Result<u8, String> {
@@ -52,7 +75,7 @@ impl Bus {
             return Ok(0);
         } else if let Some(offset) = memory::DMA.contains(addr) {
             println!("DMA read at: {:08x}", addr);
-            return Ok(0);
+            return self.dma_reg(offset);
         } else if let Some(offset) = memory::GPU.contains(addr) {
             println!("GPU read at: {:08x}", addr);
             return match offset {
@@ -144,7 +167,7 @@ impl Bus {
             return Ok(());
         } else if let Some(offset) = memory::DMA.contains(addr) {
             println!("DMA write at {:08x} with val {:08x}", addr, val);
-            return Ok(());
+            return self.set_dma_reg(offset, val);
         } else if let Some(offset) = memory::GPU.contains(addr) {
             println!("GPU write at {:08x} with val {:08x}", addr, val);
             return Ok(());
