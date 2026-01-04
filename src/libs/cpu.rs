@@ -59,6 +59,7 @@ enum Exception {
     StoreAddressError = 0x5,
     SysCall = 0x8,
     Break = 0x9,
+    IllegalInstruction = 0xa,
     CoprocessorError = 0xb,
     Overflow = 0xc,
 }
@@ -185,10 +186,7 @@ impl CPU {
                 0x27 => self.op_nor(i.rt(), i.rs(), i.rd()),
                 0x2b => self.op_sltu(i.rt(), i.rs(), i.rd()),
                 0x2a => self.op_slt(i.rt(), i.rs(), i.rd()),
-                _ => panic!(
-                    "unhandled_secondary_instruction_of_{:08x}, CPU state {}",
-                    i.0, self
-                ),
+                _ => self.op_illegal(i),
             },
             0x01 => self.op_bxx(i.imm_se(), i.rt(), i.rs()),
             0x02 => self.op_j(i.imm_jmp()),
@@ -221,7 +219,15 @@ impl CPU {
             0x2b => self.op_sw(i.imm_se(), i.rt(), i.rs()),
             0x2a => self.op_swl(i.imm_se(), i.rt(), i.rs()),
             0x2e => self.op_swr(i.imm_se(), i.rt(), i.rs()),
-            _ => panic!("Unhandled_opcode::{:08x}, CPU state: {}", i.0, self),
+            0x30 => self.exception(Exception::CoprocessorError), // lwc0
+            0x31 => self.exception(Exception::CoprocessorError), // lwc1
+            0x32 => panic!("unhandled GTE LWC2:  {:08x}", i.0),  // lwc2
+            0x33 => self.exception(Exception::CoprocessorError), // lwc3
+            0x38 => self.exception(Exception::CoprocessorError), // swc0
+            0x39 => self.exception(Exception::CoprocessorError), // swc1
+            0x3a => panic!("unhandled GTE SWC2:  {:08x}", i.0),  // swc2
+            0x3b => self.exception(Exception::CoprocessorError), // swc3
+            _ => self.op_illegal(i),
         }
     }
 
@@ -248,6 +254,11 @@ impl CPU {
 
         self.pc = handler;
         self.next_pc = self.pc.wrapping_add(4);
+    }
+
+    fn op_illegal(&mut self, i: Instruction) {
+        println!("Illegal instruction {:08x}", i.0);
+        self.exception(Exception::IllegalInstruction);
     }
 
     fn op_mult(&mut self, rt: usize, rs: usize) {
@@ -725,8 +736,8 @@ impl CPU {
         let addr = self.r[rs].wrapping_add(imm_se);
         let v = self.r[rt];
 
-        let aligned_addr = addr & !3;
-        let cur_mem = self.load32(aligned_addr as usize);
+        let aligned_addr = (addr & !3) as usize;
+        let cur_mem = self.load32(aligned_addr);
 
         let mem = match addr & 3 {
             0 => (cur_mem & 0xffff_ff00) | (v >> 24),
@@ -743,8 +754,8 @@ impl CPU {
         let addr = self.r[rs].wrapping_add(imm_se);
         let v = self.r[rt];
 
-        let aligned_addr = addr & !3;
-        let cur_mem = self.load32(aligned_addr as usize);
+        let aligned_addr = (addr & !3) as usize;
+        let cur_mem = self.load32(aligned_addr);
 
         let mem = match addr & 3 {
             0 => cur_mem | v,
