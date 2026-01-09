@@ -697,7 +697,7 @@ impl CPU {
     }
 
     fn op_lwr(&mut self, imm_se: u32, rt: usize, rs: usize) {
-        let addr = self.r[rt].wrapping_add(imm_se);
+        let addr = self.r[rs].wrapping_add(imm_se);
 
         let cur_v = self.out_r[rt];
 

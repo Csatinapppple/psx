@@ -1,3 +1,5 @@
+use crate::libs::channel::Channel;
+
 pub struct Dma {
     pub control: u32,
     irq_en: bool,
@@ -5,6 +7,7 @@ pub struct Dma {
     channel_irq_flags: u8,
     force_irq: bool,
     irq_dummy: u8,
+    channels: [Channel; 7],
 }
 
 impl Dma {
@@ -16,6 +19,7 @@ impl Dma {
             channel_irq_flags: 0,
             force_irq: false,
             irq_dummy: 0,
+            channels: [Channel::new(); 7],
         }
     }
 
@@ -43,5 +47,45 @@ impl Dma {
         self.irq_en = (val >> 23) & 1 != 0;
         let ack = ((val >> 24) & 0x3f) as u8;
         self.channel_irq_flags &= !ack;
+    }
+
+    pub fn channel(&self, port: Port) -> &Channel {
+        &self.channels[port as usize]
+    }
+
+    pub fn channel_mut(&mut self, port: Port) -> &mut Channel {
+        &mut self.channels[port as usize]
+    }
+}
+
+pub enum Port {
+    /// Macroblock decoder input
+    MdecIn = 0,
+    /// Macroblock decoder output
+    MdecOut = 1,
+    /// Graphics Processing Unit
+    Gpu = 2,
+    /// CD-ROM drive
+    CdRom = 3,
+    /// Sound Processing Unit
+    Spu = 4,
+    /// Extension port
+    Pio = 5,
+    /// Used to clear the ordering table
+    Otc = 6,
+}
+
+impl Port {
+    pub fn from_index(index: u32) -> Port {
+        match index {
+            0 => Port::MdecIn,
+            1 => Port::MdecOut,
+            2 => Port::Gpu,
+            3 => Port::CdRom,
+            4 => Port::Spu,
+            5 => Port::Pio,
+            6 => Port::Otc,
+            _ => unreachable!(),
+        }
     }
 }

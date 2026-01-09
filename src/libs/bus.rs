@@ -1,5 +1,5 @@
 use crate::libs::bios::Bios;
-use crate::libs::dma::Dma;
+use crate::libs::dma::{Dma, Port};
 use crate::libs::map::memory;
 use crate::libs::ram::Ram;
 
@@ -18,22 +18,62 @@ impl Bus {
         }
     }
 
+    fn get_major_minor(offset: u32) -> (u32, u32) {
+        ((offset & 0x70) >> 4, offset & 0xf)
+    }
+
     fn dma_reg(&self, offset: usize) -> Result<u32, String> {
-        match offset {
-            0x70 => Ok(self.dma.control),
-            _ => Err(format!("unhandled DMA access at Offset: {:08x}", offset)),
+        let (major, minor) = Self::get_major_minor(offset as u32);
+        let error = || {
+            format!(
+                "Unhandled DMA read at {:08x}, major: {}, minor: {}",
+                offset, major, minor
+            )
+        };
+
+        match major {
+            0..=6 => {
+                let channel = self.dma.channel(Port::from_index(major));
+
+                match minor {
+                    8 => Ok(channel.control()),
+                    _ => Err(error()),
+                }
+            }
+            7 => match minor {
+                0 => Ok(self.dma.control),
+                4 => Ok(self.dma.interrupt()),
+                _ => Err(error()),
+            },
+            _ => Err(error()),
         }
     }
 
     fn set_dma_reg(&mut self, offset: usize, val: u32) -> Result<(), String> {
-        match offset {
-            0x70 => self.dma.control = val,
-            _ => {
-                return Err(format!(
-                    "unhandled DMA write access at Offset: {:08x}",
-                    offset
-                ))
+        let (major, minor) = Self::get_major_minor(offset as u32);
+        let error = || {
+            format!(
+                "Unhandled DMA write at {:08x} with val {:08x}, major: {}, minor: {}",
+                offset, val, major, minor
+            )
+        };
+
+        match major {
+            0..=6 => {
+                let port = Port::from_index(major);
+                let channel = self.dma.channel_mut(port);
+
+                match minor {
+                    8 => channel.set_control(val),
+                    _ => return Err(error()),
+                }
             }
+            7 => match minor {
+                0 => self.dma.control = val,
+                4 => self.dma.set_interrupt(val),
+                _ => return Err(error()),
+            },
+            _ => return Err(error()),
         };
         Ok(())
     }
