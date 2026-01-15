@@ -26,7 +26,7 @@ impl Bus {
         let (major, minor) = Self::get_major_minor(offset as u32);
         let error = || {
             format!(
-                "Unhandled DMA read at {:08x}, major: {}, minor: {}",
+                "Unhandled DMA read at offset {:08x}, major: {}, minor: {}",
                 offset, major, minor
             )
         };
@@ -53,7 +53,7 @@ impl Bus {
         let (major, minor) = Self::get_major_minor(offset as u32);
         let error = || {
             format!(
-                "Unhandled DMA write at {:08x} with val {:08x}, major: {}, minor: {}",
+                "Unhandled DMA write at offset {:08x} with val {:08x}, major: {}, minor: {}",
                 offset, val, major, minor
             )
         };
@@ -64,6 +64,7 @@ impl Bus {
                 let channel = self.dma.channel_mut(port);
 
                 match minor {
+                    0 => channel.set_base(val),
                     8 => channel.set_control(val),
                     _ => return Err(error()),
                 }

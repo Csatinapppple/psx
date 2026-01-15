@@ -9,6 +9,7 @@ pub struct Channel {
     chop_dma_sz: u8,
     chop_cpu_sz: u8,
     dummy: u8,
+    base: u32,
 }
 
 impl Channel {
@@ -23,7 +24,15 @@ impl Channel {
             chop_dma_sz: 0,
             chop_cpu_sz: 0,
             dummy: 0,
+            base: 0,
         }
+    }
+
+    pub fn base(&self) -> u32 {
+        self.base
+    }
+    pub fn set_base(&mut self, val: u32) {
+        self.base = val & 0xffffff;
     }
 
     pub fn control(&self) -> u32 {
