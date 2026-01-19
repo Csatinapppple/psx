@@ -65,6 +65,7 @@ impl Bus {
 
                 match minor {
                     0 => channel.set_base(val),
+                    4 => channel.set_block_control(val),
                     8 => channel.set_control(val),
                     _ => return Err(error()),
                 }
