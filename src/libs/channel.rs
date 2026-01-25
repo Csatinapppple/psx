@@ -1,9 +1,9 @@
 #[derive(Copy, Clone)]
 pub struct Channel {
     enable: bool,
-    direction: Direction,
-    step: Step,
-    sync: Sync,
+    pub direction: Direction,
+    pub step: Step,
+    pub sync: Sync,
     trigger: bool,
     chop: bool,
     chop_dma_sz: u8,
@@ -30,6 +30,30 @@ impl Channel {
             block_size: 0,
             block_count: 16,
         }
+    }
+
+    pub fn transfer_size(&self) -> Option<u32> {
+        let bs = self.block_size as u32;
+        let bc = self.block_count as u32;
+
+        match self.sync {
+            Sync::Manual => Some(bs),
+            Sync::Request => Some(bc * bs),
+            Sync::LinkedList => None,
+        }
+    }
+
+    pub fn done(&mut self) {
+        self.enable = false;
+        self.trigger = false;
+    }
+
+    pub fn active(&self) -> bool {
+        let trigger = match self.sync {
+            Sync::Manual => self.trigger,
+            _ => true,
+        };
+        self.enable && trigger
     }
 
     pub fn block_control(&self) -> u32 {

@@ -1,4 +1,5 @@
 use crate::libs::bios::Bios;
+use crate::libs::channel::{Direction, Step, Sync};
 use crate::libs::dma::{Dma, Port};
 use crate::libs::map::memory;
 use crate::libs::ram::Ram;
@@ -58,7 +59,7 @@ impl Bus {
             )
         };
 
-        match major {
+        let active_port = match major {
             0..=6 => {
                 let port = Port::from_index(major);
                 let channel = self.dma.channel_mut(port);
@@ -69,15 +70,71 @@ impl Bus {
                     8 => channel.set_control(val),
                     _ => return Err(error()),
                 }
+
+                if channel.active() {
+                    Some(port)
+                } else {
+                    None
+                }
             }
-            7 => match minor {
-                0 => self.dma.control = val,
-                4 => self.dma.set_interrupt(val),
-                _ => return Err(error()),
-            },
+            7 => {
+                match minor {
+                    0 => self.dma.control = val,
+                    4 => self.dma.set_interrupt(val),
+                    _ => return Err(error()),
+                };
+                None
+            }
             _ => return Err(error()),
         };
+        if let Some(port) = active_port {
+            Self::do_dma(self, port);
+        }
         Ok(())
+    }
+
+    fn do_dma(&mut self, port: Port) {
+        match self.dma.channel(port).sync {
+            Sync::LinkedList => panic!("Linked list mode unsupported"),
+            _ => Self::do_dma_block(self, port),
+        };
+    }
+
+    fn do_dma_block(&mut self, port: Port) {
+        let channel = self.dma.channel_mut(port);
+
+        let step = match channel.step {
+            Step::Increment => |addr: u32| addr.wrapping_add(4),
+            Step::Decrement => |addr: u32| addr.wrapping_sub(4),
+        };
+
+        let mut addr = channel.base();
+
+        let mut remsz = match channel.transfer_size() {
+            Some(n) => n,
+            None => panic!("Couldn't figure out DMA block transfer size"),
+        };
+
+        while remsz > 0 {
+            let cur_addr = addr & 0x1ffffc;
+
+            match channel.direction {
+                Direction::FromRam => panic!("Unhandled DMA direction"),
+                Direction::ToRam => {
+                    let src_word = match port {
+                        Port::Otc => match remsz {
+                            1 => 0xffffff,
+                            _ => addr.wrapping_sub(4) & 0x1fffff,
+                        },
+                        _ => panic!("Unhandled DMA source port {}", port as u8),
+                    };
+                    self.ram.store32(cur_addr as usize, src_word);
+                }
+            };
+            addr = step(addr);
+            remsz -= 1;
+        }
+        channel.done();
     }
 
     pub fn load8(&self, addr: usize) -> Result<u8, String> {
@@ -121,9 +178,12 @@ impl Bus {
         } else if let Some(offset) = memory::GPU.contains(addr) {
             println!("GPU read at: {:08x}", addr);
             return match offset {
-                4 => Ok(0x1000_0000),
+                4 => Ok(0x1c00_0000),
                 _ => Ok(0),
             };
+        } else if let Some(offset) = memory::TIMERS.contains(addr) {
+            println!("TIMER register read at: {:08x}", addr);
+            return Ok(0);
         }
 
         Err(format!("unhandled_load32_at_address_{:08x}", addr))
