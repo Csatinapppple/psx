@@ -58,7 +58,7 @@ impl Dma {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq)]
 pub enum Port {
     /// Macroblock decoder input
     MdecIn = 0,

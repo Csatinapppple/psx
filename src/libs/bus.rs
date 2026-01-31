@@ -88,16 +88,47 @@ impl Bus {
             _ => return Err(error()),
         };
         if let Some(port) = active_port {
-            Self::do_dma(self, port);
+            self.do_dma(port);
         }
         Ok(())
     }
 
     fn do_dma(&mut self, port: Port) {
         match self.dma.channel(port).sync {
-            Sync::LinkedList => panic!("Linked list mode unsupported"),
-            _ => Self::do_dma_block(self, port),
+            Sync::LinkedList => self.do_dma_linked_list(port),
+            _ => self.do_dma_block(port),
         };
+    }
+
+    fn do_dma_linked_list(&mut self, port: Port) {
+        let channel = self.dma.channel_mut(port);
+
+        let mut addr = channel.base() & 0x1ffffc;
+
+        if channel.direction == Direction::ToRam {
+            panic!("Invalid DMA direction for linked list mode");
+        }
+
+        if port != Port::Gpu {
+            panic!("Attempted linked list DMA on port {}", port as u8);
+        }
+
+        loop {
+            let header = self.ram.load32(addr as usize);
+            let mut remsz = header >> 24;
+            while remsz > 0 {
+                addr = (addr.wrapping_add(4)) & 0x1ffffc;
+                let command = self.ram.load32(addr as usize);
+                println!("GPU command {:08x}", command);
+                remsz -= 1;
+            }
+            if header & 0x800000 != 0 {
+                break;
+            }
+
+            addr = header & 0x1ffffc;
+        }
+        channel.done();
     }
 
     fn do_dma_block(&mut self, port: Port) {
