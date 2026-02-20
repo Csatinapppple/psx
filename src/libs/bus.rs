@@ -150,7 +150,14 @@ impl Bus {
             let cur_addr = addr & 0x1ffffc;
 
             match channel.direction {
-                Direction::FromRam => panic!("Unhandled DMA direction"),
+                Direction::FromRam => {
+                    let src_word = self.ram.load32(cur_addr as usize);
+
+                    match port {
+                        Port::Gpu => println!("GPU data {:08x}", src_word),
+                        _ => panic!("Unhandled DMA destination port {}", port as u8),
+                    };
+                }
                 Direction::ToRam => {
                     let src_word = match port {
                         Port::Otc => match remsz {
